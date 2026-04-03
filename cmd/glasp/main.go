@@ -1060,6 +1060,13 @@ func recordRunHistory(args []string, commandName string, duration time.Duration,
 	}
 }
 
+// sensitiveShortFlags maps short flags to their redaction status.
+// Short flags whose long-form names contain sensitive keywords must be
+// listed here because isSensitiveOption only inspects "--" prefixed names.
+var sensitiveShortFlags = map[string]bool{
+	"-p": true, // --params
+}
+
 func sanitizeHistoryArgs(args []string) []string {
 	if len(args) == 0 {
 		return nil
@@ -1084,7 +1091,7 @@ func sanitizeHistoryArgs(args []string) []string {
 				continue
 			}
 		}
-		if isSensitiveOption(arg, sensitiveKeywords) {
+		if isSensitiveOption(arg, sensitiveKeywords) || sensitiveShortFlags[arg] {
 			out = append(out, arg)
 			if i+1 < len(args) {
 				out = append(out, "REDACTED")

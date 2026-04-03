@@ -1915,3 +1915,27 @@ func TestSanitizeHistoryArgs(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitizeHistoryArgsShortFlags(t *testing.T) {
+	args := []string{
+		"run-function",
+		"myFunc",
+		"-p", `["secret-value"]`,
+		"--nondev",
+	}
+	got := sanitizeHistoryArgs(args)
+	want := []string{
+		"run-function",
+		"myFunc",
+		"-p", "REDACTED",
+		"--nondev",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("length mismatch: got=%d want=%d (%#v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("arg[%d] mismatch: got=%q want=%q", i, got[i], want[i])
+		}
+	}
+}
