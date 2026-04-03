@@ -8,7 +8,7 @@ bin/
 # glasp runtime data
 .glasp/
 
-# clasp project config (contains scriptId, allow docs/ samples)
+# clasp project config (contains scriptId)
 /.clasp.json
 /.claspignore
 

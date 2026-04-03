@@ -182,10 +182,9 @@ func TestLoadClaspConfigFromDocsSample(t *testing.T) {
 	if !ok {
 		t.Fatal("Failed to determine current test file path")
 	}
-	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	docsDir := filepath.Join(repoRoot, "docs")
+	testdataDir := filepath.Join(filepath.Dir(currentFile), "testdata")
 
-	cfg, err := LoadClaspConfig(docsDir)
+	cfg, err := LoadClaspConfig(testdataDir)
 	if err != nil {
 		t.Fatalf("LoadClaspConfig failed: %v", err)
 	}
@@ -222,10 +221,9 @@ func TestClaspIgnoreFromDocsSample(t *testing.T) {
 	if !ok {
 		t.Fatal("Failed to determine current test file path")
 	}
-	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
-	docsDir := filepath.Join(repoRoot, "docs")
+	testdataDir := filepath.Join(filepath.Dir(currentFile), "testdata")
 
-	ci, err := NewClaspIgnore(docsDir)
+	ci, err := NewClaspIgnore(testdataDir)
 	if err != nil {
 		t.Fatalf("NewClaspIgnore failed: %v", err)
 	}
