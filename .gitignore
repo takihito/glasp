@@ -1,0 +1,20 @@
+# Build artifacts
+bin/
+glasp
+
+# Environment / secrets
+.env
+
+# glasp runtime data
+.glasp/
+
+# clasp project config (contains scriptId)
+.clasp.json
+.claspignore
+
+# Development artifacts
+tmp/
+issues/
+
+# OS files
+.DS_Store
