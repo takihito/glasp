@@ -1,6 +1,6 @@
 # Build artifacts
 bin/
-glasp
+/glasp
 
 # Environment / secrets
 .env
@@ -8,9 +8,9 @@ glasp
 # glasp runtime data
 .glasp/
 
-# clasp project config (contains scriptId)
-.clasp.json
-.claspignore
+# clasp project config (contains scriptId, allow docs/ samples)
+/.clasp.json
+/.claspignore
 
 # Development artifacts
 tmp/
