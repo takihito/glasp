@@ -123,8 +123,9 @@ type ClaspIgnore struct {
 func NewClaspIgnore(dir string) (*ClaspIgnore, error) {
 	filePath := filepath.Join(dir, ".claspignore")
 	defaultLines := []string{".glasp/", "node_modules/"}
-	// go-gitignore expects the file to exist. If it doesn't, we just
-	// return an "empty" ignore object that matches nothing.
+	// go-gitignore expects the file to exist. If it doesn't, we return
+	// an ignore object compiled from the built-in default patterns
+	// (.glasp/ and node_modules/).
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return &ClaspIgnore{ignore: gitignore.CompileIgnoreLines(defaultLines...)}, nil
 	}
