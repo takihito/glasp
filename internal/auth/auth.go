@@ -414,12 +414,28 @@ func writePrivateFileAtomically(path string, data []byte) error {
 		return fmt.Errorf("failed to close temp file: %w", err)
 	}
 	// On Windows, os.Rename fails if the destination already exists.
-	// Remove the destination first so rename succeeds cross-platform.
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove existing file %s: %w", path, err)
+	// Back up the original first so we can restore it if rename fails.
+	backupPath := path + ".bak"
+	hadOriginal := false
+	if _, err := os.Stat(path); err == nil {
+		hadOriginal = true
+		_ = os.Remove(backupPath) // remove stale backup if any
+		if err := os.Rename(path, backupPath); err != nil {
+			return fmt.Errorf("failed to back up existing file %s: %w", path, err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat existing file %s: %w", path, err)
 	}
 	if err := os.Rename(tempPath, path); err != nil {
+		if hadOriginal {
+			if restoreErr := os.Rename(backupPath, path); restoreErr != nil {
+				return fmt.Errorf("failed to replace auth file %s: %w (also failed to restore backup: %v)", path, err, restoreErr)
+			}
+		}
 		return fmt.Errorf("failed to replace auth file %s: %w", path, err)
+	}
+	if hadOriginal {
+		_ = os.Remove(backupPath)
 	}
 	return nil
 }
