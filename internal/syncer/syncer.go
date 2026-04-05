@@ -473,7 +473,14 @@ func parseFileExtensions(cfg *config.ClaspConfig) (map[string][]string, error) {
 		if fileExt, ok, err := parseString(cfg.Extra, "fileExtension"); err != nil {
 			return nil, err
 		} else if ok {
-			scriptExtensions = []string{fileExt}
+			// Start from the configured extension, then ensure "ts" is
+			// always present so .ts files are collected for auto-transpile.
+			seen := map[string]bool{fileExt: true}
+			exts := []string{fileExt}
+			if !seen["ts"] {
+				exts = append(exts, "ts")
+			}
+			scriptExtensions = exts
 		}
 		if scriptExts, ok, err := parseStringSlice(cfg.Extra, "scriptExtensions"); err != nil {
 			return nil, err

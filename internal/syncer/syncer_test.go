@@ -32,6 +32,36 @@ func TestOptionsFromConfigFileExtension(t *testing.T) {
 	}
 }
 
+func TestFileExtensionJSAlwaysIncludesTS(t *testing.T) {
+	cfg := &config.ClaspConfig{
+		ScriptID: "script-id",
+		Extra: map[string]json.RawMessage{
+			"fileExtension": json.RawMessage(`"js"`),
+		},
+	}
+	opts, err := OptionsFromConfig("/tmp/project", cfg, nil)
+	if err != nil {
+		t.Fatalf("OptionsFromConfig failed: %v", err)
+	}
+	exts := opts.FileExtensions[fileTypeServerJS]
+	hasJS := false
+	hasTS := false
+	for _, ext := range exts {
+		if ext == ".js" {
+			hasJS = true
+		}
+		if ext == ".ts" {
+			hasTS = true
+		}
+	}
+	if !hasJS {
+		t.Fatalf("expected .js in script extensions, got %v", exts)
+	}
+	if !hasTS {
+		t.Fatalf("expected .ts in script extensions (for auto-transpile), got %v", exts)
+	}
+}
+
 func TestCollectLocalFilesMappingAndIgnore(t *testing.T) {
 	root := t.TempDir()
 	contentDir := filepath.Join(root, "src")
