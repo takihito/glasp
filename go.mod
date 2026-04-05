@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	github.com/alecthomas/kong v1.13.0
+	github.com/evanw/esbuild v0.27.3
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	golang.org/x/oauth2 v0.34.0
 	google.golang.org/api v0.260.0
@@ -13,7 +14,6 @@ require (
 	cloud.google.com/go/auth v0.18.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
-	github.com/evanw/esbuild v0.27.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
