@@ -109,7 +109,8 @@ glasp は `.clasp.json` の `fileExtension` 設定の有無に関わらず、pus
 - `.ts` ファイルは esbuild で JavaScript に変換してから push
 - `.js` と `.gs` ファイルはそのまま push
 - `.d.ts` ファイルは除外（型定義ファイルはデプロイ不要）
-- `.ts` + `.js` 混在プロジェクトに対応
+- `.ts` + `.js` 混在プロジェクトに対応（`fileExtension` が `"js"` でも `.ts` は常に収集される）
+- 収集する拡張子をカスタマイズするには `.clasp.json` の `scriptExtensions` を使用
 
 ### 履歴からのリプレイ
 

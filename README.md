@@ -109,7 +109,8 @@ glasp automatically detects and transpiles `.ts` files on push, regardless of `f
 - `.ts` files are transpiled to JavaScript via esbuild before push
 - `.js` and `.gs` files are passed through unchanged
 - `.d.ts` files are excluded (declaration files are not deployable)
-- Mixed `.ts` + `.js` projects are supported
+- Mixed `.ts` + `.js` projects are supported (`.ts` is always collected even when `fileExtension` is `"js"`)
+- To customize which extensions are collected, use `scriptExtensions` in `.clasp.json`
 
 ### History Replay
 
