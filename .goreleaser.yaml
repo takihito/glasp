@@ -1,0 +1,72 @@
+version: 2
+
+project_name: glasp
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: glasp
+    main: ./cmd/glasp
+    binary: glasp
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+      - -X main.Commit={{.Commit}}
+      - -X main.Date={{.Date}}
+      - -X glasp/internal/auth.ldflagsClientID={{.Env.GLASP_CLIENT_ID}}
+      - -X glasp/internal/auth.ldflagsClientSecret={{.Env.GLASP_CLIENT_SECRET}}
+
+archives:
+  - id: glasp
+    ids:
+      - glasp
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    output: true
+    args:
+      - sign-blob
+      - --yes
+      - --output-certificate=${certificate}
+      - --output-signature=${signature}
+      - ${artifact}
+
+release:
+  github:
+    owner: takihito
+    name: glasp
+  prerelease: auto
+  mode: keep-existing
+
+changelog:
+  use: github-native
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
