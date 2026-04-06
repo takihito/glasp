@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
-	"glasp/internal/config"
-	"glasp/internal/history"
-	"glasp/internal/syncer"
-	"glasp/internal/transform"
+	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/history"
+	"github.com/takihito/glasp/internal/syncer"
+	"github.com/takihito/glasp/internal/transform"
 	"google.golang.org/api/script/v1"
 )
 

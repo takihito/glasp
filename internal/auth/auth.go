@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"  // Required for some scopes, e.g., drive.file

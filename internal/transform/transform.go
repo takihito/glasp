@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"glasp/internal/syncer"
+	"github.com/takihito/glasp/internal/syncer"
 
 	"github.com/evanw/esbuild/pkg/api"
 )

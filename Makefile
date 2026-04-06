@@ -19,7 +19,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 LDFLAGS := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(COMMIT)' -X 'main.Date=$(DATE)' \
-           -X 'glasp/internal/auth.ldflagsClientID=$(GLASP_CLIENT_ID)' -X 'glasp/internal/auth.ldflagsClientSecret=$(GLASP_CLIENT_SECRET)'
+           -X 'github.com/takihito/glasp/internal/auth.ldflagsClientID=$(GLASP_CLIENT_ID)' -X 'github.com/takihito/glasp/internal/auth.ldflagsClientSecret=$(GLASP_CLIENT_SECRET)'
 
 # Test target
 test:

@@ -1,4 +1,4 @@
-module glasp
+module github.com/takihito/glasp
 
 go 1.24.2
 

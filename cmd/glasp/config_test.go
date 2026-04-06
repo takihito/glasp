@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 )
 
 func TestConfigInitCreatesConfig(t *testing.T) {

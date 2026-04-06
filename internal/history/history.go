@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 )
 
 const (

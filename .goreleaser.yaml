@@ -25,8 +25,8 @@ builds:
       - -X main.Version={{.Version}}
       - -X main.Commit={{.Commit}}
       - -X main.Date={{.Date}}
-      - -X glasp/internal/auth.ldflagsClientID={{.Env.GLASP_CLIENT_ID}}
-      - -X glasp/internal/auth.ldflagsClientSecret={{.Env.GLASP_CLIENT_SECRET}}
+      - -X github.com/takihito/glasp/internal/auth.ldflagsClientID={{.Env.GLASP_CLIENT_ID}}
+      - -X github.com/takihito/glasp/internal/auth.ldflagsClientSecret={{.Env.GLASP_CLIENT_SECRET}}
 
 archives:
   - id: glasp
