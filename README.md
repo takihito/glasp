@@ -12,7 +12,37 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 
 ## Installation
 
+### go install
+
 ```bash
+go install github.com/takihito/glasp/cmd/glasp@latest
+```
+
+### Pre-built binaries
+
+Download from the [Releases](https://github.com/takihito/glasp/releases) page:
+
+```bash
+VERSION=0.1.0
+OS=${OS:-Darwin}     # Darwin, Linux, or Windows
+ARCH=${ARCH:-arm64}  # arm64 or amd64
+ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
+
+curl -L -o "${ARTIFACT}" \
+  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
+
+# Verify checksum
+echo "SHA256_FROM_RELEASE  ${ARTIFACT}" | shasum -a 256 --check
+
+# Install
+sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/takihito/glasp.git
+cd glasp
 make build    # Build binary to bin/glasp
 make install  # Build and install globally
 ```
