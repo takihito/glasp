@@ -14,7 +14,12 @@ ifneq (,$(wildcard .env))
   export GLASP_CLIENT_ID GLASP_CLIENT_SECRET
 endif
 
-LDFLAGS := -X 'glasp/internal/auth.ldflagsClientID=$(GLASP_CLIENT_ID)' -X 'glasp/internal/auth.ldflagsClientSecret=$(GLASP_CLIENT_SECRET)'
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+LDFLAGS := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(COMMIT)' -X 'main.Date=$(DATE)' \
+           -X 'glasp/internal/auth.ldflagsClientID=$(GLASP_CLIENT_ID)' -X 'glasp/internal/auth.ldflagsClientSecret=$(GLASP_CLIENT_SECRET)'
 
 # Test target
 test:

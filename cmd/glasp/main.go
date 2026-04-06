@@ -970,7 +970,7 @@ type VersionCmd struct{}
 
 // Run executes the version command.
 func (c *VersionCmd) Run(ctx *kong.Context) error {
-	fmt.Println("glasp version 0.1.0") // Placeholder version
+	fmt.Printf("glasp version %s (commit=%s, date=%s)\n", Version, Commit, Date)
 	return nil
 }
 
