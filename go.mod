@@ -1,12 +1,13 @@
 module github.com/takihito/glasp
 
-go 1.24.2
+go 1.25.0
 
 require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/evanw/esbuild v0.27.3
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	golang.org/x/oauth2 v0.34.0
+	golang.org/x/sys v0.42.0
 	google.golang.org/api v0.260.0
 )
 
@@ -28,7 +29,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251222181119-0a764e51fe1b // indirect
 	google.golang.org/grpc v1.78.0 // indirect

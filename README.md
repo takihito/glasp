@@ -15,8 +15,14 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 ### go install
 
 ```bash
+# OAuth credentials must be set as environment variables
+export GLASP_CLIENT_ID="your-client-id"
+export GLASP_CLIENT_SECRET="your-client-secret"
+
 go install github.com/takihito/glasp/cmd/glasp@latest
 ```
+
+> **Note:** `go install` does not embed OAuth credentials into the binary. You must set `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET` environment variables at runtime. Pre-built binaries from the Releases page have credentials embedded and do not require this step.
 
 ### Pre-built binaries
 
@@ -24,7 +30,7 @@ Download from the [Releases](https://github.com/takihito/glasp/releases) page:
 
 ```bash
 VERSION=0.1.0
-OS=${OS:-Darwin}     # Darwin, Linux, or Windows
+OS=${OS:-darwin}     # darwin, linux, or windows
 ARCH=${ARCH:-arm64}  # arm64 or amd64
 ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
 
@@ -37,6 +43,8 @@ echo "SHA256_FROM_RELEASE  ${ARTIFACT}" | shasum -a 256 --check
 # Install
 sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
 ```
+
+> **Windows:** Download the `.zip` archive instead of `.tar.gz`.
 
 ### Build from source
 

@@ -2,6 +2,10 @@ version: 2
 
 project_name: glasp
 
+env:
+  - GLASP_CLIENT_ID={{ if index .Env "GLASP_CLIENT_ID" }}{{ .Env.GLASP_CLIENT_ID }}{{ end }}
+  - GLASP_CLIENT_SECRET={{ if index .Env "GLASP_CLIENT_SECRET" }}{{ .Env.GLASP_CLIENT_SECRET }}{{ end }}
+
 before:
   hooks:
     - go mod tidy
