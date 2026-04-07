@@ -3,7 +3,7 @@ module github.com/takihito/glasp
 go 1.25.0
 
 require (
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.15.0
 	github.com/evanw/esbuild v0.27.3
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	golang.org/x/oauth2 v0.34.0
