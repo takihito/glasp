@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/kong v1.15.0
 	github.com/evanw/esbuild v0.28.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.42.0
 	google.golang.org/api v0.260.0
 )
