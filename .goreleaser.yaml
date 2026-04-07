@@ -2,10 +2,6 @@ version: 2
 
 project_name: glasp
 
-env:
-  - GLASP_CLIENT_ID={{ if index .Env "GLASP_CLIENT_ID" }}{{ .Env.GLASP_CLIENT_ID }}{{ end }}
-  - GLASP_CLIENT_SECRET={{ if index .Env "GLASP_CLIENT_SECRET" }}{{ .Env.GLASP_CLIENT_SECRET }}{{ end }}
-
 before:
   hooks:
     - go mod tidy
@@ -29,8 +25,6 @@ builds:
       - -X main.Version={{.Version}}
       - -X main.Commit={{.Commit}}
       - -X main.Date={{.Date}}
-      - -X github.com/takihito/glasp/internal/auth.ldflagsClientID={{.Env.GLASP_CLIENT_ID}}
-      - -X github.com/takihito/glasp/internal/auth.ldflagsClientSecret={{.Env.GLASP_CLIENT_SECRET}}
 
 archives:
   - id: glasp

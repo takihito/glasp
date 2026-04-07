@@ -39,5 +39,3 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GLASP_CLIENT_ID: ${{ secrets.GLASP_CLIENT_ID }}
-          GLASP_CLIENT_SECRET: ${{ secrets.GLASP_CLIENT_SECRET }}

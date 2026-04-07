@@ -15,14 +15,8 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 ### go install
 
 ```bash
-# OAuth credentials must be set as environment variables
-export GLASP_CLIENT_ID="your-client-id"
-export GLASP_CLIENT_SECRET="your-client-secret"
-
 go install github.com/takihito/glasp/cmd/glasp@latest
 ```
-
-> **Note:** `go install` does not embed OAuth credentials into the binary. You must set `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET` environment variables at runtime. Pre-built binaries from the Releases page have credentials embedded and do not require this step.
 
 ### Pre-built binaries
 
@@ -33,12 +27,19 @@ VERSION=0.1.0
 OS=${OS:-darwin}     # darwin, linux, or windows
 ARCH=${ARCH:-arm64}  # arm64 or amd64
 ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
+CHECKSUMS="checksums.txt"
 
 curl -L -o "${ARTIFACT}" \
   "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
+curl -L -o "${CHECKSUMS}" \
+  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${CHECKSUMS}"
 
 # Verify checksum
-echo "SHA256_FROM_RELEASE  ${ARTIFACT}" | shasum -a 256 --check
+if command -v sha256sum >/dev/null 2>&1; then
+  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c
+else
+  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c
+fi
 
 # Install
 sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
@@ -55,7 +56,18 @@ make build    # Build binary to bin/glasp
 make install  # Build and install globally
 ```
 
-OAuth credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`) are injected at build time via `-ldflags` from `.env`.
+OAuth credentials can be embedded at build time via `-ldflags` from `.env` for local development.
+
+### OAuth credentials
+
+Regardless of installation method, glasp requires Google OAuth credentials at runtime:
+
+```bash
+export GLASP_CLIENT_ID="your-client-id"
+export GLASP_CLIENT_SECRET="your-client-secret"
+```
+
+See [Google Cloud Console](https://console.cloud.google.com/apis/credentials) to create OAuth 2.0 credentials for a Desktop application.
 
 ## Quick Start
 
