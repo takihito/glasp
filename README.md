@@ -60,14 +60,16 @@ OAuth credentials can be embedded at build time via `-ldflags` from `.env` for l
 
 ### OAuth credentials
 
-Regardless of installation method, glasp requires Google OAuth credentials at runtime:
+Pre-built binaries from the [Releases](https://github.com/takihito/glasp/releases) page include embedded OAuth credentials and work out of the box.
+
+To use your own credentials (e.g., with `go install` or a source build), set environment variables:
 
 ```bash
 export GLASP_CLIENT_ID="your-client-id"
 export GLASP_CLIENT_SECRET="your-client-secret"
 ```
 
-See [Google Cloud Console](https://console.cloud.google.com/apis/credentials) to create OAuth 2.0 credentials for a Desktop application.
+Environment variables take precedence over embedded credentials. See [Google Cloud Console](https://console.cloud.google.com/apis/credentials) to create OAuth 2.0 credentials for a Desktop application.
 
 ## Quick Start
 

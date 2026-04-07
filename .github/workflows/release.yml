@@ -17,6 +17,13 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Verify OAuth secrets are configured
+        run: |
+          if [ -z "${{ secrets.GLASP_CLIENT_ID }}" ] || [ -z "${{ secrets.GLASP_CLIENT_SECRET }}" ]; then
+            echo "::error::GLASP_CLIENT_ID and GLASP_CLIENT_SECRET must be set as repository secrets."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -39,3 +46,5 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GLASP_CLIENT_ID: ${{ secrets.GLASP_CLIENT_ID }}
+          GLASP_CLIENT_SECRET: ${{ secrets.GLASP_CLIENT_SECRET }}

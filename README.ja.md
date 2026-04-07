@@ -60,14 +60,16 @@ make install  # ビルドしてグローバルにインストール
 
 ### OAuth 認証情報
 
-インストール方法に関わらず、glasp の実行には Google OAuth 認証情報が必要です:
+[Releases](https://github.com/takihito/glasp/releases) ページのビルド済みバイナリには OAuth 認証情報が埋め込まれており、そのまま利用できます。
+
+独自の認証情報を使用する場合（`go install` やソースビルド等）は環境変数を設定してください:
 
 ```bash
 export GLASP_CLIENT_ID="your-client-id"
 export GLASP_CLIENT_SECRET="your-client-secret"
 ```
 
-[Google Cloud Console](https://console.cloud.google.com/apis/credentials) からデスクトップアプリケーション用の OAuth 2.0 認証情報を作成してください。
+環境変数は埋め込み認証情報より優先されます。[Google Cloud Console](https://console.cloud.google.com/apis/credentials) からデスクトップアプリケーション用の OAuth 2.0 認証情報を作成してください。
 
 ## クイックスタート
 
