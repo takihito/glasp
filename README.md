@@ -12,12 +12,64 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 
 ## Installation
 
+### go install
+
 ```bash
+go install github.com/takihito/glasp/cmd/glasp@latest
+```
+
+### Pre-built binaries
+
+Download from the [Releases](https://github.com/takihito/glasp/releases) page:
+
+```bash
+VERSION=0.1.0
+OS=${OS:-darwin}     # darwin, linux, or windows
+ARCH=${ARCH:-arm64}  # arm64 or amd64
+ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
+CHECKSUMS="checksums.txt"
+
+curl -L -o "${ARTIFACT}" \
+  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
+curl -L -o "${CHECKSUMS}" \
+  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${CHECKSUMS}"
+
+# Verify checksum
+if command -v sha256sum >/dev/null 2>&1; then
+  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c
+else
+  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c
+fi
+
+# Install
+sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
+```
+
+> **Windows:** Download the `.zip` archive instead of `.tar.gz`.
+
+### Build from source
+
+```bash
+git clone https://github.com/takihito/glasp.git
+cd glasp
 make build    # Build binary to bin/glasp
 make install  # Build and install globally
 ```
 
-OAuth credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`) are injected at build time via `-ldflags` from `.env`.
+OAuth credentials can be embedded at build time via `-ldflags` from `.env` for local development.
+
+### OAuth credentials
+
+Pre-built binaries from the [Releases](https://github.com/takihito/glasp/releases) page include embedded OAuth credentials and work out of the box.
+
+To use your own credentials (e.g., with `go install` or a source build), set environment variables:
+
+```bash
+export GLASP_CLIENT_ID="your-client-id"
+export GLASP_CLIENT_SECRET="your-client-secret"
+```
+
+Environment variables take precedence over embedded credentials. See [Google Cloud Console](https://console.cloud.google.com/apis/credentials) to create OAuth 2.0 credentials for a Desktop application.
 
 ## Quick Start
 

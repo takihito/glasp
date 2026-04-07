@@ -16,12 +16,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"glasp/internal/auth" // Import the auth package
-	"glasp/internal/config"
-	"glasp/internal/history"
-	"glasp/internal/scriptapi"
-	"glasp/internal/syncer"
-	"glasp/internal/transform"
+	"github.com/takihito/glasp/internal/auth" // Import the auth package
+	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/history"
+	"github.com/takihito/glasp/internal/scriptapi"
+	"github.com/takihito/glasp/internal/syncer"
+	"github.com/takihito/glasp/internal/transform"
 
 	"github.com/alecthomas/kong"
 	"google.golang.org/api/script/v1"
@@ -970,7 +970,7 @@ type VersionCmd struct{}
 
 // Run executes the version command.
 func (c *VersionCmd) Run(ctx *kong.Context) error {
-	fmt.Println("glasp version 0.1.0") // Placeholder version
+	fmt.Printf("glasp version %s (commit=%s, date=%s)\n", Version, Commit, Date)
 	return nil
 }
 

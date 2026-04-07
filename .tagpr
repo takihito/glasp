@@ -1,0 +1,5 @@
+[tagpr]
+vPrefix = true
+releaseBranch = "main"
+versionFile = "cmd/glasp/version.go"
+release = "draft"

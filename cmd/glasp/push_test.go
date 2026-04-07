@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"glasp/internal/config"
-	"glasp/internal/syncer"
+	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/syncer"
 	"google.golang.org/api/script/v1"
 )
 

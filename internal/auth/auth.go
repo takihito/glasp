@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"  // Required for some scopes, e.g., drive.file
@@ -157,7 +157,7 @@ func Config() (*oauth2.Config, error) {
 		clientID = ldflagsClientID
 	}
 	if envClientID := os.Getenv("GLASP_CLIENT_ID"); envClientID != "" {
-		// Fallback to environment variable
+		// Environment variable overrides embedded credentials.
 		clientID = envClientID
 	}
 
@@ -165,7 +165,7 @@ func Config() (*oauth2.Config, error) {
 		clientSecret = ldflagsClientSecret
 	}
 	if envClientSecret := os.Getenv("GLASP_CLIENT_SECRET"); envClientSecret != "" {
-		// Fallback to environment variable
+		// Environment variable overrides embedded credentials.
 		clientSecret = envClientSecret
 	}
 

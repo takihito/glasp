@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 )
 
 func TestPullCommandArchiveFlag(t *testing.T) {

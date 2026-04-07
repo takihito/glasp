@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"glasp/internal/config"
+	"github.com/takihito/glasp/internal/config"
 	"google.golang.org/api/script/v1"
 )
 

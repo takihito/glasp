@@ -1,0 +1,10 @@
+package main
+
+var (
+	// Version is the semantic version. Overridden at build time via ldflags.
+	Version = "dev"
+	// Commit is the git commit hash. Overridden at build time via ldflags.
+	Commit = "none"
+	// Date is the build date. Overridden at build time via ldflags.
+	Date = "unknown"
+)
