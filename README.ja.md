@@ -1,5 +1,7 @@
 # glasp
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/takihito/glasp/badge)](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp)
+
 Google Apps Script プロジェクトを管理するための Go 製 CLI ツール。Node.js ベースの [clasp](https://github.com/google/clasp) を置き換える、シングルバイナリの高速な代替ツールです。clasp との完全な互換性を備えています。
 
 ## 特徴
