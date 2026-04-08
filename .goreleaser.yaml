@@ -50,10 +50,11 @@ signs:
   - cmd: cosign
     artifacts: checksum
     output: true
+    signature: ${artifact}.bundle
     args:
       - sign-blob
       - --yes
-      - --bundle=${artifact}.bundle
+      - --bundle=${signature}
       - ${artifact}
 
 release:
