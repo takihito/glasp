@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.0.1](https://github.com/takihito/glasp/commits/v0.0.1) - 2026-04-07
+## [v0.1.0](https://github.com/takihito/glasp/commits/v0.1.0) - 2026-04-08
 - Start Project  by @takihito in https://github.com/takihito/glasp/pull/1
 - Prepare for v0.1.0 public release by @takihito in https://github.com/takihito/glasp/pull/2
 - Bump google.golang.org/grpc from 1.78.0 to 1.79.3 in the go_modules group across 1 directory by @dependabot[bot] in https://github.com/takihito/glasp/pull/3
