@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.repository.default_branch == github.ref_name || github.event_name == 'schedule' || github.event_name == 'branch_protection_rule'
     permissions:
+      contents: read
       security-events: write
       id-token: write
 
