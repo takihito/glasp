@@ -50,7 +50,7 @@ signs:
   - cmd: cosign
     artifacts: checksum
     output: true
-    signature: ${artifact}.bundle
+    signature: ${artifact}.sigstore.json
     args:
       - sign-blob
       - --yes
