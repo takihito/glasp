@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.1.1](https://github.com/takihito/glasp/compare/v0.1.0...v0.1.1) - 2026-04-08
+- Fix cosign signing to use bundle format by @takihito in https://github.com/takihito/glasp/pull/14
+
 ## [v0.1.0](https://github.com/takihito/glasp/commits/v0.1.0) - 2026-04-08
 - Start Project  by @takihito in https://github.com/takihito/glasp/pull/1
 - Prepare for v0.1.0 public release by @takihito in https://github.com/takihito/glasp/pull/2
