@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.1.2](https://github.com/takihito/glasp/compare/v0.1.1...v0.1.2) - 2026-04-09
+- Add OpenSSF Scorecard workflow and badge by @takihito in https://github.com/takihito/glasp/pull/16
+- Fix upload-artifact commit hash in scorecard workflow by @takihito in https://github.com/takihito/glasp/pull/18
+- Improve Signed-Releases scorecard with sigstore and SLSA provenance by @takihito in https://github.com/takihito/glasp/pull/19
+- GoReleaser に use_existing_draft を追加 (Immutable Releases 対応) by @takihito in https://github.com/takihito/glasp/pull/21
+- tagpr で PAT を使用してワークフロートリガーを有効化 by @takihito in https://github.com/takihito/glasp/pull/22
+
 ## [v0.1.1](https://github.com/takihito/glasp/compare/v0.1.0...v0.1.1) - 2026-04-08
 - Fix cosign signing to use bundle format by @takihito in https://github.com/takihito/glasp/pull/14
 
