@@ -63,6 +63,7 @@ release:
     name: glasp
   prerelease: auto
   mode: keep-existing
+  use_existing_draft: true
 
 changelog:
   use: github-native
