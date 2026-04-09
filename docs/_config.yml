@@ -1,0 +1,19 @@
+title: glasp
+description: A Go CLI tool for managing Google Apps Script projects. Single-binary, high-performance clasp alternative.
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+  - jekyll-remote-theme
+
+url: https://takihito.github.io
+baseurl: /glasp
+
+# Navigation (used in default layout override)
+nav:
+  - title: Home
+    url: /glasp/
+  - title: Installation
+    url: /glasp/installation
+  - title: Usage
+    url: /glasp/usage
+  - title: GitHub
+    url: https://github.com/takihito/glasp
