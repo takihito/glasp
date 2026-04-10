@@ -6,6 +6,13 @@ set -eu
 REPO="takihito/glasp"
 INSTALL_DIR="${GLASP_INSTALL_DIR:-${HOME}/.local/bin}"
 
+# Resolve INSTALL_DIR to absolute path
+case "$INSTALL_DIR" in
+  /*) ;;
+  ~/*) INSTALL_DIR="${HOME}/${INSTALL_DIR#~/}" ;;
+  *) INSTALL_DIR="$(pwd)/${INSTALL_DIR}" ;;
+esac
+
 # Detect OS
 OS="$(uname -s)"
 case "$OS" in
@@ -29,6 +36,17 @@ if [ "$OS" = "darwin" ] && [ "$ARCH" = "amd64" ]; then
   fi
 fi
 
+# Select checksum tool
+SHASUM=""
+if command -v shasum >/dev/null 2>&1; then
+  SHASUM="shasum -a 256"
+elif command -v sha256sum >/dev/null 2>&1; then
+  SHASUM="sha256sum"
+else
+  echo "Error: neither shasum nor sha256sum found. Install one and retry."
+  exit 1
+fi
+
 # Get latest version
 echo "Fetching latest version..."
 VERSION="$(curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')"
@@ -38,30 +56,25 @@ if [ -z "$VERSION" ]; then
 fi
 echo "Latest version: $VERSION"
 
-# Download
+# Download to temp directory
 ARTIFACT="glasp_${VERSION}_${OS}_${ARCH}.tar.gz"
 CHECKSUMS="checksums.txt"
 BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
-TMPDIR="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR"' EXIT
+WORK="$(mktemp -d 2>/dev/null || mktemp -d -t glasp)"
+trap 'rm -rf "$WORK"' EXIT
 
 echo "Downloading ${ARTIFACT}..."
-curl -sSL -o "${TMPDIR}/${ARTIFACT}" "${BASE_URL}/${ARTIFACT}"
-curl -sSL -o "${TMPDIR}/${CHECKSUMS}" "${BASE_URL}/${CHECKSUMS}"
+curl -sSL -o "${WORK}/${ARTIFACT}" "${BASE_URL}/${ARTIFACT}"
+curl -sSL -o "${WORK}/${CHECKSUMS}" "${BASE_URL}/${CHECKSUMS}"
 
 # Verify checksum
 echo "Verifying checksum..."
-cd "$TMPDIR"
-EXPECTED="$(grep "  ${ARTIFACT}$" "${CHECKSUMS}" | cut -d ' ' -f 1)"
+EXPECTED="$(grep "  ${ARTIFACT}$" "${WORK}/${CHECKSUMS}" | cut -d ' ' -f 1)"
 if [ -z "$EXPECTED" ]; then
   echo "Error: checksum not found for ${ARTIFACT}"
   exit 1
 fi
-if [ "$OS" = "darwin" ]; then
-  ACTUAL="$(shasum -a 256 "${ARTIFACT}" | cut -d ' ' -f 1)"
-else
-  ACTUAL="$(sha256sum "${ARTIFACT}" | cut -d ' ' -f 1)"
-fi
+ACTUAL="$($SHASUM "${WORK}/${ARTIFACT}" | cut -d ' ' -f 1)"
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "Error: checksum mismatch"
   echo "  expected: $EXPECTED"
@@ -70,10 +83,24 @@ if [ "$EXPECTED" != "$ACTUAL" ]; then
 fi
 
 # Extract and install
-mkdir -p "$INSTALL_DIR"
-echo "Installing to ${INSTALL_DIR}/glasp..."
-tar -xzf "${ARTIFACT}" glasp
-mv glasp "${INSTALL_DIR}/glasp"
+tar -xzf "${WORK}/${ARTIFACT}" -C "${WORK}" glasp
+if [ ! -d "$INSTALL_DIR" ]; then
+  mkdir -p "$INSTALL_DIR" 2>/dev/null || {
+    echo "Error: cannot create ${INSTALL_DIR} (permission denied)"
+    echo "Choose a writable directory or run with sudo:"
+    echo "  curl -sSL https://takihito.github.io/glasp/install.sh | sudo GLASP_INSTALL_DIR=${INSTALL_DIR} sh"
+    exit 1
+  }
+fi
+if [ -w "$INSTALL_DIR" ]; then
+  mv "${WORK}/glasp" "${INSTALL_DIR}/glasp"
+else
+  echo "Error: ${INSTALL_DIR} is not writable"
+  echo "Choose a writable directory or run with sudo:"
+  echo "  curl -sSL https://takihito.github.io/glasp/install.sh | sudo GLASP_INSTALL_DIR=${INSTALL_DIR} sh"
+  exit 1
+fi
+echo "Installed to ${INSTALL_DIR}/glasp"
 
 # Check if INSTALL_DIR is in PATH
 case ":${PATH}:" in

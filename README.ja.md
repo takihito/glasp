@@ -31,7 +31,7 @@ irm https://takihito.github.io/glasp/install.ps1 | iex
 デフォルトで `~/.local/bin` にインストールされます。`sudo` は不要です。インストール先を変更する場合:
 
 ```bash
-GLASP_INSTALL_DIR=/usr/local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
 ### go install

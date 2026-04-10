@@ -39,7 +39,7 @@ glasp push
 デフォルトでは `~/.local/bin` にインストールされます。変更する場合:
 
 ```bash
-GLASP_INSTALL_DIR=/usr/local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。
