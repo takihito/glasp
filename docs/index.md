@@ -36,10 +36,10 @@ glasp pull
 glasp push
 ```
 
-インストール先を変更する場合:
+デフォルトでは `~/.local/bin` にインストールされます。変更する場合:
 
 ```bash
-GLASP_INSTALL_DIR=~/.local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
+GLASP_INSTALL_DIR=/usr/local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
 ```
 
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。

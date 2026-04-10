@@ -19,7 +19,7 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-最新バージョンを自動検出し、チェックサム検証後にインストールします。
+最新バージョンを自動検出し、チェックサム検証後に `~/.local/bin` にインストールします。`sudo` は不要です。
 
 > インストール先を変更するには `GLASP_INSTALL_DIR` 環境変数を設定してください。
 

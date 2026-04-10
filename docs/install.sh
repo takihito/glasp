@@ -4,7 +4,7 @@
 set -eu
 
 REPO="takihito/glasp"
-INSTALL_DIR="${GLASP_INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${GLASP_INSTALL_DIR:-${HOME}/.local/bin}"
 
 # Detect OS
 OS="$(uname -s)"
@@ -21,6 +21,13 @@ case "$ARCH" in
   arm64|aarch64) ARCH="arm64" ;;
   *)             echo "Error: unsupported architecture: $ARCH"; exit 1 ;;
 esac
+
+# Detect Rosetta 2 on macOS
+if [ "$OS" = "darwin" ] && [ "$ARCH" = "amd64" ]; then
+  if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = "1" ]; then
+    ARCH="arm64"
+  fi
+fi
 
 # Get latest version
 echo "Fetching latest version..."
@@ -50,13 +57,10 @@ if [ -z "$EXPECTED" ]; then
   echo "Error: checksum not found for ${ARTIFACT}"
   exit 1
 fi
-if command -v shasum >/dev/null 2>&1; then
+if [ "$OS" = "darwin" ]; then
   ACTUAL="$(shasum -a 256 "${ARTIFACT}" | cut -d ' ' -f 1)"
-elif command -v sha256sum >/dev/null 2>&1; then
-  ACTUAL="$(sha256sum "${ARTIFACT}" | cut -d ' ' -f 1)"
 else
-  echo "Warning: no checksum tool found, skipping verification"
-  ACTUAL="$EXPECTED"
+  ACTUAL="$(sha256sum "${ARTIFACT}" | cut -d ' ' -f 1)"
 fi
 if [ "$EXPECTED" != "$ACTUAL" ]; then
   echo "Error: checksum mismatch"
@@ -66,16 +70,22 @@ if [ "$EXPECTED" != "$ACTUAL" ]; then
 fi
 
 # Extract and install
+mkdir -p "$INSTALL_DIR"
 echo "Installing to ${INSTALL_DIR}/glasp..."
 tar -xzf "${ARTIFACT}" glasp
-if [ ! -d "$INSTALL_DIR" ]; then
-  sudo mkdir -p "$INSTALL_DIR"
-fi
-if [ -w "$INSTALL_DIR" ]; then
-  mv glasp "${INSTALL_DIR}/glasp"
-else
-  sudo mv glasp "${INSTALL_DIR}/glasp"
-fi
+mv glasp "${INSTALL_DIR}/glasp"
+
+# Check if INSTALL_DIR is in PATH
+case ":${PATH}:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *)
+    echo ""
+    echo "Note: ${INSTALL_DIR} is not in your PATH."
+    echo "Add the following to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+    echo ""
+    echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+    ;;
+esac
 
 echo ""
 echo "glasp ${VERSION} installed successfully!"
