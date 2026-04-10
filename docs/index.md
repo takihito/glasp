@@ -25,6 +25,10 @@ Node.js ベースの [clasp](https://github.com/google/clasp) をシングルバ
 # インストール
 go install github.com/takihito/glasp/cmd/glasp@latest
 
+# OAuth credentials を設定（go install の場合は必須）
+export GLASP_CLIENT_ID="your-client-id"
+export GLASP_CLIENT_SECRET="your-client-secret"
+
 # ログイン
 glasp login
 
@@ -35,6 +39,8 @@ glasp clone <script-id>
 glasp pull
 glasp push
 ```
+
+> **Note:** [Releases](https://github.com/takihito/glasp/releases) ページの Pre-built binary には OAuth credentials が埋め込み済みのため、環境変数の設定は不要です。
 
 詳しくは [Installation](installation) と [Usage](usage) をご覧ください。
 
