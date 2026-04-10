@@ -45,12 +45,24 @@ curl -sSL -o "${TMPDIR}/${CHECKSUMS}" "${BASE_URL}/${CHECKSUMS}"
 # Verify checksum
 echo "Verifying checksum..."
 cd "$TMPDIR"
-if command -v sha256sum >/dev/null 2>&1; then
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c --quiet
-elif command -v shasum >/dev/null 2>&1; then
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c --quiet
+EXPECTED="$(grep "  ${ARTIFACT}$" "${CHECKSUMS}" | cut -d ' ' -f 1)"
+if [ -z "$EXPECTED" ]; then
+  echo "Error: checksum not found for ${ARTIFACT}"
+  exit 1
+fi
+if command -v shasum >/dev/null 2>&1; then
+  ACTUAL="$(shasum -a 256 "${ARTIFACT}" | cut -d ' ' -f 1)"
+elif command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL="$(sha256sum "${ARTIFACT}" | cut -d ' ' -f 1)"
 else
   echo "Warning: no checksum tool found, skipping verification"
+  ACTUAL="$EXPECTED"
+fi
+if [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "Error: checksum mismatch"
+  echo "  expected: $EXPECTED"
+  echo "  actual:   $ACTUAL"
+  exit 1
 fi
 
 # Extract and install
