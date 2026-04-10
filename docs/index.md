@@ -36,6 +36,12 @@ glasp pull
 glasp push
 ```
 
+インストール先を変更する場合:
+
+```bash
+GLASP_INSTALL_DIR=~/.local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
+```
+
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。
 
 詳しくは [Installation](installation) と [Usage](usage) をご覧ください。
