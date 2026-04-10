@@ -14,40 +14,33 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 
 ## Installation
 
+### Quick Install (recommended)
+
+**Linux / macOS:**
+
+```bash
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://takihito.github.io/glasp/install.ps1 | iex
+```
+
+Installs to `~/.local/bin` by default. No `sudo` required. To change the install directory:
+
+```bash
+GLASP_INSTALL_DIR=/usr/local/bin curl -sSL https://takihito.github.io/glasp/install.sh | sh
+```
+
 ### go install
 
 ```bash
 go install github.com/takihito/glasp/cmd/glasp@latest
 ```
 
-### Pre-built binaries
-
-Download from the [Releases](https://github.com/takihito/glasp/releases) page:
-
-```bash
-VERSION=0.1.0
-OS=${OS:-darwin}     # darwin, linux, or windows
-ARCH=${ARCH:-arm64}  # arm64 or amd64
-ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
-CHECKSUMS="checksums.txt"
-
-curl -L -o "${ARTIFACT}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
-curl -L -o "${CHECKSUMS}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${CHECKSUMS}"
-
-# Verify checksum
-if command -v sha256sum >/dev/null 2>&1; then
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c
-else
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c
-fi
-
-# Install
-sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
-```
-
-> **Windows:** Download the `.zip` archive instead of `.tar.gz`.
+> This method does not embed OAuth credentials. Set `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET` environment variables.
 
 ### Build from source
 
@@ -58,13 +51,12 @@ make build    # Build binary to bin/glasp
 make install  # Build and install globally
 ```
 
-OAuth credentials can be embedded at build time via `-ldflags` from `.env` for local development.
-
 ### OAuth credentials
 
-Pre-built binaries from the [Releases](https://github.com/takihito/glasp/releases) page include embedded OAuth credentials and work out of the box.
-
-To use your own credentials (e.g., with `go install` or a source build), set environment variables:
+| Install method | Credentials |
+|---------------|-------------|
+| Quick Install (pre-built binaries) | Embedded, override with env vars |
+| `go install` / source build | Env vars required |
 
 ```bash
 export GLASP_CLIENT_ID="your-client-id"
@@ -76,6 +68,9 @@ Environment variables take precedence over embedded credentials. See [Google Clo
 ## Quick Start
 
 ```bash
+# Install (Linux / macOS)
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
+
 # Login to Google account
 glasp login
 
@@ -87,9 +82,6 @@ glasp pull
 
 # Push local files
 glasp push
-
-# Create a new project
-glasp create-script --title "My Project"
 ```
 
 ## Commands
