@@ -14,40 +14,33 @@ A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clas
 
 ## Installation
 
+### Quick Install (recommended)
+
+**Linux / macOS:**
+
+```bash
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://takihito.github.io/glasp/install.ps1 | iex
+```
+
+Installs to `~/.local/bin` by default. No `sudo` required. To change the install directory:
+
+```bash
+curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+```
+
 ### go install
 
 ```bash
 go install github.com/takihito/glasp/cmd/glasp@latest
 ```
 
-### Pre-built binaries
-
-Download from the [Releases](https://github.com/takihito/glasp/releases) page:
-
-```bash
-VERSION=0.1.0
-OS=${OS:-darwin}     # darwin, linux, or windows
-ARCH=${ARCH:-arm64}  # arm64 or amd64
-ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
-CHECKSUMS="checksums.txt"
-
-curl -L -o "${ARTIFACT}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
-curl -L -o "${CHECKSUMS}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${CHECKSUMS}"
-
-# Verify checksum
-if command -v sha256sum >/dev/null 2>&1; then
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c
-else
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c
-fi
-
-# Install
-sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
-```
-
-> **Windows:** Download the `.zip` archive instead of `.tar.gz`.
+> This method does not embed OAuth credentials. Set `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET` environment variables.
 
 ### Build from source
 
@@ -58,13 +51,12 @@ make build    # Build binary to bin/glasp
 make install  # Build and install globally
 ```
 
-OAuth credentials can be embedded at build time via `-ldflags` from `.env` for local development.
-
 ### OAuth credentials
 
-Pre-built binaries from the [Releases](https://github.com/takihito/glasp/releases) page include embedded OAuth credentials and work out of the box.
-
-To use your own credentials (e.g., with `go install` or a source build), set environment variables:
+| Install method | Credentials |
+|---------------|-------------|
+| Quick Install (pre-built binaries) | Embedded, override with env vars |
+| `go install` / source build | Env vars required |
 
 ```bash
 export GLASP_CLIENT_ID="your-client-id"
@@ -76,8 +68,14 @@ Environment variables take precedence over embedded credentials. See [Google Clo
 ## Quick Start
 
 ```bash
+# Install (Linux / macOS)
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
+
 # Login to Google account
 glasp login
+
+# Or, if you already have clasp credentials:
+glasp login --auth ~/.clasprc.json
 
 # Clone an existing project
 glasp clone <script-id>
@@ -87,9 +85,6 @@ glasp pull
 
 # Push local files
 glasp push
-
-# Create a new project
-glasp create-script --title "My Project"
 ```
 
 ## Commands
@@ -212,10 +207,13 @@ Auth tokens are stored at `.glasp/access.json` with `0600` permissions. Auth sou
 
 ### Using `--auth` with `.clasprc.json`
 
-If you already use clasp, you likely have a `~/.clasprc.json` file containing your OAuth credentials. The `--auth` option lets you reuse this file directly with glasp — **no need to run `glasp login` separately**.
+If you already use clasp, you likely have a `~/.clasprc.json` file containing your OAuth credentials. The `--auth` option lets you reuse this file directly with glasp — **no need to go through the interactive login flow**.
 
 ```bash
-# Use your existing clasp credentials
+# Import clasp credentials into glasp (saves to .glasp/access.json)
+glasp login --auth ~/.clasprc.json
+
+# Or use --auth directly on each command without login
 glasp push --auth ~/.clasprc.json
 glasp pull --auth ~/.clasprc.json
 glasp clone SCRIPT_ID --auth ~/.clasprc.json
@@ -224,13 +222,15 @@ glasp clone SCRIPT_ID --auth ~/.clasprc.json
 glasp push --auth ~/
 ```
 
+`glasp login --auth` imports the credentials from `.clasprc.json` into glasp's project cache (`.glasp/access.json`), so subsequent commands work without specifying `--auth` each time. If you prefer not to import, you can pass `--auth` directly on individual commands instead.
+
 This is especially useful when:
 
 - **Migrating from clasp to glasp** — start using glasp immediately without re-authenticating
 - **CI/CD pipelines** — share a single `.clasprc.json` across clasp and glasp workflows
 - **Multiple Google accounts** — keep separate `.clasprc.json` files per account and switch with `--auth`
 
-The `--auth` option is available on all commands that require authentication: `push`, `pull`, `clone`, `create-script`, `create-deployment`, `update-deployment`, `list-deployments`, and `run-function`.
+The `--auth` option is available on all commands that require authentication: `login`, `push`, `pull`, `clone`, `create-script`, `create-deployment`, `update-deployment`, `list-deployments`, and `run-function`.
 
 #### Supported `.clasprc.json` formats
 

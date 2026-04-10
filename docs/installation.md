@@ -19,9 +19,13 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-最新バージョンを自動検出し、チェックサム検証後にインストールします。
+最新バージョンを自動検出し、チェックサム検証後に `~/.local/bin` にインストールします。`sudo` は不要です。
 
-> インストール先を変更するには `GLASP_INSTALL_DIR` 環境変数を設定してください。
+インストール先を変更する場合:
+
+```bash
+curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+```
 
 ## go install
 
@@ -33,33 +37,7 @@ go install github.com/takihito/glasp/cmd/glasp@latest
 
 ## Pre-built binaries
 
-[Releases](https://github.com/takihito/glasp/releases) ページからダウンロードできます。
-リリースバイナリには OAuth credentials が埋め込み済みで、すぐに利用できます。
-
-```bash
-VERSION=0.1.2
-OS=${OS:-darwin}     # darwin, linux, or windows
-ARCH=${ARCH:-arm64}  # arm64 or amd64
-ARTIFACT="glasp_v${VERSION}_${OS}_${ARCH}.tar.gz"
-CHECKSUMS="checksums.txt"
-
-curl -L -o "${ARTIFACT}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${ARTIFACT}"
-curl -L -o "${CHECKSUMS}" \
-  "https://github.com/takihito/glasp/releases/download/v${VERSION}/${CHECKSUMS}"
-
-# Verify checksum
-if command -v sha256sum >/dev/null 2>&1; then
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | sha256sum -c
-else
-  grep "  ${ARTIFACT}$" "${CHECKSUMS}" | shasum -a 256 -c
-fi
-
-# Install
-sudo tar -xzf "${ARTIFACT}" -C /usr/local/bin glasp
-```
-
-> **Windows:** `.zip` アーカイブをダウンロードしてください。
+手動でダウンロードする場合は [Releases](https://github.com/takihito/glasp/releases) ページを参照してください。
 
 ## Build from source
 
