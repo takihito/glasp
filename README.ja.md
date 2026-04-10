@@ -74,6 +74,9 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 # Google アカウントにログイン
 glasp login
 
+# または、clasp の認証情報がある場合:
+glasp login --auth ~/.clasprc.json
+
 # 既存のプロジェクトをクローン
 glasp clone <script-id>
 
@@ -204,10 +207,13 @@ glasp convert --ts-to-gas src/main.ts  # 特定のファイルを変換
 
 ### `--auth` で `.clasprc.json` を利用する
 
-すでに clasp を使っている場合、`~/.clasprc.json` に OAuth 認証情報が保存されています。`--auth` オプションを使えば、このファイルを glasp でそのまま再利用できます。**`glasp login` を実行する必要はありません。**
+すでに clasp を使っている場合、`~/.clasprc.json` に OAuth 認証情報が保存されています。`--auth` オプションを使えば、このファイルを glasp でそのまま再利用できます。**対話型ログインフローは不要です。**
 
 ```bash
-# 既存の clasp 認証情報を使用
+# clasp の認証情報を glasp にインポート（.glasp/access.json に保存）
+glasp login --auth ~/.clasprc.json
+
+# または、login せずに各コマンドで直接 --auth を指定
 glasp push --auth ~/.clasprc.json
 glasp pull --auth ~/.clasprc.json
 glasp clone SCRIPT_ID --auth ~/.clasprc.json
@@ -216,13 +222,15 @@ glasp clone SCRIPT_ID --auth ~/.clasprc.json
 glasp push --auth ~/
 ```
 
+`glasp login --auth` は `.clasprc.json` の認証情報を glasp のプロジェクトキャッシュ（`.glasp/access.json`）にインポートします。以降のコマンドでは `--auth` の指定なしで動作します。インポートせずに使いたい場合は、各コマンドに `--auth` を直接指定してください。
+
 以下のようなケースで特に便利です：
 
 - **clasp から glasp への移行時** — 再認証なしですぐに glasp を使い始められます
 - **CI/CD パイプライン** — clasp と glasp のワークフローで単一の `.clasprc.json` を共有できます
 - **複数の Google アカウント** — アカウントごとに別々の `.clasprc.json` を用意し、`--auth` で切り替えられます
 
-`--auth` オプションは認証が必要なすべてのコマンドで利用できます：`push`、`pull`、`clone`、`create-script`、`create-deployment`、`update-deployment`、`list-deployments`、`run-function`。
+`--auth` オプションは認証が必要なすべてのコマンドで利用できます：`login`、`push`、`pull`、`clone`、`create-script`、`create-deployment`、`update-deployment`、`list-deployments`、`run-function`。
 
 #### 対応する `.clasprc.json` のフォーマット
 

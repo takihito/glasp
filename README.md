@@ -74,6 +74,9 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 # Login to Google account
 glasp login
 
+# Or, if you already have clasp credentials:
+glasp login --auth ~/.clasprc.json
+
 # Clone an existing project
 glasp clone <script-id>
 
@@ -204,10 +207,13 @@ Auth tokens are stored at `.glasp/access.json` with `0600` permissions. Auth sou
 
 ### Using `--auth` with `.clasprc.json`
 
-If you already use clasp, you likely have a `~/.clasprc.json` file containing your OAuth credentials. The `--auth` option lets you reuse this file directly with glasp — **no need to run `glasp login` separately**.
+If you already use clasp, you likely have a `~/.clasprc.json` file containing your OAuth credentials. The `--auth` option lets you reuse this file directly with glasp — **no need to go through the interactive login flow**.
 
 ```bash
-# Use your existing clasp credentials
+# Import clasp credentials into glasp (saves to .glasp/access.json)
+glasp login --auth ~/.clasprc.json
+
+# Or use --auth directly on each command without login
 glasp push --auth ~/.clasprc.json
 glasp pull --auth ~/.clasprc.json
 glasp clone SCRIPT_ID --auth ~/.clasprc.json
@@ -216,13 +222,15 @@ glasp clone SCRIPT_ID --auth ~/.clasprc.json
 glasp push --auth ~/
 ```
 
+`glasp login --auth` imports the credentials from `.clasprc.json` into glasp's project cache (`.glasp/access.json`), so subsequent commands work without specifying `--auth` each time. If you prefer not to import, you can pass `--auth` directly on individual commands instead.
+
 This is especially useful when:
 
 - **Migrating from clasp to glasp** — start using glasp immediately without re-authenticating
 - **CI/CD pipelines** — share a single `.clasprc.json` across clasp and glasp workflows
 - **Multiple Google accounts** — keep separate `.clasprc.json` files per account and switch with `--auth`
 
-The `--auth` option is available on all commands that require authentication: `push`, `pull`, `clone`, `create-script`, `create-deployment`, `update-deployment`, `list-deployments`, and `run-function`.
+The `--auth` option is available on all commands that require authentication: `login`, `push`, `pull`, `clone`, `create-script`, `create-deployment`, `update-deployment`, `list-deployments`, and `run-function`.
 
 #### Supported `.clasprc.json` formats
 
