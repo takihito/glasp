@@ -56,7 +56,7 @@ make install  # グローバルにインストール
 
 | インストール方法 | credentials |
 |-----------------|-------------|
-| Pre-built binaries | 埋め込み済み、そのまま利用可能 |
+| Pre-built binaries | 埋め込み済み,環境変数で上書き可能 |
 | `go install` / ソースビルド | 環境変数で指定が必要 |
 
 ```bash

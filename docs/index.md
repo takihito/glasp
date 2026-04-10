@@ -40,7 +40,7 @@ glasp pull
 glasp push
 ```
 
-> **Note:** [Releases](https://github.com/takihito/glasp/releases) ページの Pre-built binary には OAuth credentials が埋め込み済みのため、環境変数の設定は不要です。
+> **Note:** [Releases](https://github.com/takihito/glasp/releases) ページの Pre-built binary は必要に応じて環境変数を設定してください。
 
 詳しくは [Installation](installation) と [Usage](usage) をご覧ください。
 
