@@ -5,6 +5,24 @@ title: Installation
 
 # Installation
 
+## Quick Install (recommended)
+
+**Linux / macOS:**
+
+```bash
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://takihito.github.io/glasp/install.ps1 | iex
+```
+
+最新バージョンを自動検出し、チェックサム検証後にインストールします。
+
+> インストール先を変更するには `GLASP_INSTALL_DIR` 環境変数を設定してください。
+
 ## go install
 
 ```bash
