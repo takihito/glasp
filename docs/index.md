@@ -22,12 +22,8 @@ Node.js ベースの [clasp](https://github.com/google/clasp) をシングルバ
 ## Quick Start
 
 ```bash
-# インストール
-go install github.com/takihito/glasp/cmd/glasp@latest
-
-# OAuth credentials を設定（go install の場合は必須）
-export GLASP_CLIENT_ID="your-client-id"
-export GLASP_CLIENT_SECRET="your-client-secret"
+# インストール（Linux / macOS）
+curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
 # ログイン
 glasp login
@@ -40,7 +36,7 @@ glasp pull
 glasp push
 ```
 
-> **Note:** [Releases](https://github.com/takihito/glasp/releases) ページの Pre-built binary は必要に応じて環境変数を設定してください。
+> **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。
 
 詳しくは [Installation](installation) と [Usage](usage) をご覧ください。
 
