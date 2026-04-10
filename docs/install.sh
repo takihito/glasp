@@ -56,6 +56,9 @@ fi
 # Extract and install
 echo "Installing to ${INSTALL_DIR}/glasp..."
 tar -xzf "${ARTIFACT}" glasp
+if [ ! -d "$INSTALL_DIR" ]; then
+  sudo mkdir -p "$INSTALL_DIR"
+fi
 if [ -w "$INSTALL_DIR" ]; then
   mv glasp "${INSTALL_DIR}/glasp"
 else
