@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.3](https://github.com/takihito/glasp/compare/v0.2.2...v0.2.3) - 2026-04-11
+- Fix SLSA workflow ref format (@v2.1.0) by @takihito in https://github.com/takihito/glasp/pull/31
+
 ## [v0.2.2](https://github.com/takihito/glasp/compare/v0.2.1...v0.2.2) - 2026-04-11
 - Fix SLSA provenance: タグ参照に変更 by @takihito in https://github.com/takihito/glasp/pull/29
 
