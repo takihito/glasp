@@ -28,7 +28,13 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-Installs to `~/.local/bin` by default. No `sudo` required. To change the install directory:
+Installs to `~/.local/bin` by default. No `sudo` required. If `~/.local/bin` is not in your PATH, add it to your shell profile:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+To change the install directory:
 
 ```bash
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh

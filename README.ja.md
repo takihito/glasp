@@ -28,7 +28,13 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-デフォルトで `~/.local/bin` にインストールされます。`sudo` は不要です。インストール先を変更する場合:
+デフォルトで `~/.local/bin` にインストールされます。`sudo` は不要です。`~/.local/bin` が PATH に含まれていない場合は、シェルの設定ファイルに追記してください:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+インストール先を変更する場合:
 
 ```bash
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh

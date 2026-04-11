@@ -21,6 +21,12 @@ irm https://takihito.github.io/glasp/install.ps1 | iex
 
 最新バージョンを自動検出し、チェックサム検証後に `~/.local/bin` にインストールします。`sudo` は不要です。
 
+`~/.local/bin` が PATH に含まれていない場合は、シェルの設定ファイル（`~/.bashrc`, `~/.zshrc` 等）に以下を追記してください:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 インストール先を変更する場合:
 
 ```bash
