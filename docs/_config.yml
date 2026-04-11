@@ -15,5 +15,7 @@ nav:
     url: /glasp/installation
   - title: Usage
     url: /glasp/usage
+  - title: 日本語
+    url: /glasp/ja/
   - title: GitHub
     url: https://github.com/takihito/glasp
