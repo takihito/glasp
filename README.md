@@ -4,6 +4,8 @@
 
 A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clasp) for managing Google Apps Script projects. Single-binary, high-performance alternative with full clasp compatibility.
 
+**Documentation:** [https://takihito.github.io/glasp/](https://takihito.github.io/glasp/)
+
 ## Features
 
 - Full clasp compatibility (`.clasp.json`, `.claspignore`, `.clasprc.json`)
