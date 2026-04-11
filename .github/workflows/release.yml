@@ -72,7 +72,7 @@ jobs:
       contents: write
     # NOTE: SLSA reusable workflows require tag refs (not SHA pinning).
     # See: https://github.com/slsa-framework/slsa-github-generator/issues/722
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0
     with:
       base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
       upload-assets: true
