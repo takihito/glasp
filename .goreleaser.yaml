@@ -64,6 +64,7 @@ release:
   prerelease: auto
   mode: keep-existing
   use_existing_draft: true
+  draft: true
 
 changelog:
   use: github-native
