@@ -4,6 +4,8 @@
 
 Google Apps Script プロジェクトを管理するための Go 製 CLI ツール。Node.js ベースの [clasp](https://github.com/google/clasp) を置き換える、シングルバイナリの高速な代替ツールです。clasp との完全な互換性を備えています。
 
+**ドキュメント:** [https://takihito.github.io/glasp/ja/](https://takihito.github.io/glasp/ja/)
+
 ## 特徴
 
 - clasp 完全互換（`.clasp.json`、`.claspignore`、`.clasprc.json`）
@@ -28,7 +30,15 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-デフォルトで `~/.local/bin` にインストールされます。`sudo` は不要です。インストール先を変更する場合:
+デフォルトで `~/.local/bin` にインストールされます（Linux/macOS）。`sudo` は不要です。`~/.local/bin` が PATH に含まれていない場合は、シェルの設定ファイル（`~/.bashrc`, `~/.zshrc`）に追記してください:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+> **Windows:** PowerShell インストーラーが `%LOCALAPPDATA%\glasp\bin` を PATH に自動追加します。
+
+インストール先を変更する場合:
 
 ```bash
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh

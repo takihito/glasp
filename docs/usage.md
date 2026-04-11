@@ -9,80 +9,83 @@ title: Usage
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `login` | | Google アカウントにログイン |
-| `logout` | | Google アカウントからログアウト |
-| `create-script` | `create` | 新しい Apps Script プロジェクトを作成 |
-| `clone` | | 既存の Apps Script プロジェクトをクローン |
-| `pull` | | Apps Script からファイルをダウンロード |
-| `push` | | ファイルを Apps Script にアップロード |
-| `open-script` | `open` | Apps Script プロジェクトをブラウザで開く |
-| `create-deployment` | | デプロイメントを作成 |
-| `update-deployment` | `deploy` | 既存のデプロイメントを更新 |
-| `list-deployments` | | デプロイメント一覧を表示 |
-| `run-function` | | Apps Script 関数をリモート実行 |
-| `convert` | | プロジェクトファイルを変換 (TS ↔ GAS) |
-| `history` | | コマンド実行履歴を表示 |
-| `config init` | | `.glasp/config.json` を作成 |
-| `version` | | バージョンを表示 |
+| `login` | | Log in to Google account |
+| `logout` | | Log out from Google account |
+| `create-script` | `create` | Create a new Apps Script project |
+| `clone` | | Clone an existing Apps Script project |
+| `pull` | | Download project files from Apps Script |
+| `push` | | Upload project files to Apps Script |
+| `open-script` | `open` | Open the Apps Script project in browser |
+| `create-deployment` | | Create a deployment |
+| `update-deployment` | `deploy` | Update an existing deployment |
+| `list-deployments` | | List deployments |
+| `run-function` | | Run an Apps Script function remotely |
+| `convert` | | Convert project files (TS ↔ GAS) |
+| `history` | | Show command execution history |
+| `config init` | | Create `.glasp/config.json` |
+| `version` | | Show version |
 
 ## Push
 
 ```bash
-glasp push              # ローカルファイルをプッシュ
-glasp push --force      # .claspignore を無視（.glasp/ は常に除外）
-glasp push --archive    # プッシュしたファイルをアーカイブ
-glasp push --dryrun     # API 呼び出しなしのドライラン
+glasp push              # Push local files
+glasp push --force      # Ignore .claspignore (.glasp/ is always excluded)
+glasp push --archive    # Archive pushed files
+glasp push --dryrun     # Dry run without API calls
 ```
 
 ### TypeScript Support
 
-glasp は push 時に `.ts` ファイルを自動検出してトランスパイルします（`.clasp.json` の `fileExtension` 設定に関係なく）。
+glasp automatically detects and transpiles `.ts` files on push, regardless of `fileExtension` setting in `.clasp.json`.
 
-- `.ts` → esbuild で JavaScript に変換してプッシュ
-- `.js`, `.gs` → そのままプッシュ
-- `.d.ts` → 除外（デプロイ不可）
+- `.ts` → transpiled to JavaScript via esbuild before push
+- `.js`, `.gs` → passed through unchanged
+- `.d.ts` → excluded (not deployable)
 
 ### History Replay
 
 ```bash
-glasp push --history-id <id>          # アーカイブから再プッシュ
-glasp push --history-id <id> --dryrun # ドライランでリプレイ
+glasp push --history-id <id>          # Re-push from archive
+glasp push --history-id <id> --dryrun # Dry run replay
 ```
 
 ## Pull
 
 ```bash
-glasp pull              # リモートファイルを取得
-glasp pull --archive    # 取得したファイルをアーカイブ
+glasp pull              # Pull remote files
+glasp pull --archive    # Archive pulled files
 ```
 
-`fileExtension` が `"ts"` の場合、取得時に GAS JavaScript を TypeScript に自動変換します。
+When `fileExtension` is `"ts"`, pulled files are automatically converted from GAS JavaScript to TypeScript.
 
 ## Authentication
 
-認証トークンは `.glasp/access.json` に保存されます（パーミッション `0600`）。
+Auth tokens are stored at `.glasp/access.json` (permission `0600`).
 
-認証ソースの優先順位:
-1. `--auth` フラグ（`.clasprc.json` のパス）
-2. プロジェクトキャッシュ（`.glasp/access.json`）
-3. インタラクティブログイン
+Auth source priority:
+1. `--auth` flag (path to `.clasprc.json`)
+2. Project cache (`.glasp/access.json`)
+3. Interactive login flow
 
-### clasp の認証情報を再利用
+### Reuse clasp credentials
 
 ```bash
-# 既存の clasp credentials を使用
+# Import clasp credentials into glasp
+glasp login --auth ~/.clasprc.json
+
+# Or use --auth directly on each command
 glasp push --auth ~/.clasprc.json
 glasp pull --auth ~/.clasprc.json
 glasp clone SCRIPT_ID --auth ~/.clasprc.json
 ```
 
-clasp から glasp への移行時に、再認証なしですぐに使い始められます。
+Start using glasp immediately when migrating from clasp — no re-authentication needed.
 
 ## Configuration
 
 ### .clasp.json
 
-clasp と同じ設定ファイルを利用します:
+Standard clasp configuration file. glasp reads the same format:
 
 ```json
 {
@@ -94,25 +97,25 @@ clasp と同じ設定ファイルを利用します:
 
 ### .claspignore
 
-gitignore 構文でファイルを除外します。glasp のデフォルト除外:
+Gitignore syntax for excluding files. glasp default excludes:
 
-- `.glasp/` — glasp 内部ディレクトリ（常に除外）
-- `node_modules/` — npm 依存
+- `.glasp/` — glasp internal directory (always excluded)
+- `node_modules/` — npm dependencies
 
 ## Convert
 
 ```bash
 glasp convert --gas-to-ts              # GAS JS → TypeScript
 glasp convert --ts-to-gas              # TypeScript → GAS JS
-glasp convert --ts-to-gas src/main.ts  # 特定ファイルのみ変換
+glasp convert --ts-to-gas src/main.ts  # Convert specific files
 ```
 
 ## History
 
 ```bash
-glasp history                          # 全履歴を表示
-glasp history --limit 10               # 直近10件
-glasp history --status success         # ステータスでフィルタ
-glasp history --command push           # コマンドでフィルタ
-glasp history --order asc              # 昇順（デフォルト: 降順）
+glasp history                          # Show all history
+glasp history --limit 10               # Last 10 entries
+glasp history --status success         # Filter by status
+glasp history --command push           # Filter by command
+glasp history --order asc              # Oldest first (default: desc)
 ```

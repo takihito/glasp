@@ -7,50 +7,52 @@ title: Home
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/takihito/glasp/badge)](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp)
 
-**glasp** は Google Apps Script プロジェクトを管理する Go 製 CLI ツールです。
-Node.js ベースの [clasp](https://github.com/google/clasp) をシングルバイナリで置き換え、高速に動作します。
+**glasp** is a Go CLI tool for managing Google Apps Script projects.
+A single-binary, high-performance replacement for Node.js-based [clasp](https://github.com/google/clasp).
+
+[日本語ドキュメント](ja/)
 
 ## Features
 
-- **clasp 完全互換** — `.clasp.json`, `.claspignore`, `.clasprc.json` をそのまま利用可能
-- **TypeScript 自動トランスパイル** — push 時に `.ts` ファイルを自動変換
-- **OAuth2 認証** — ローカルコールバックサーバーによるスムーズなログイン
-- **コマンド履歴** — 実行履歴の記録とリプレイ機能
-- **アーカイブ** — push/pull 操作のスナップショット保存
-- **シングルバイナリ** — インストール不要、ダウンロードしてすぐ使える
+- **Full clasp compatibility** — works with `.clasp.json`, `.claspignore`, `.clasprc.json`
+- **TypeScript auto-transpilation** — `.ts` files are automatically converted on push
+- **OAuth2 authentication** — smooth login via local callback server
+- **Command history** — execution history with replay support
+- **Archive** — snapshot push/pull operations
+- **Single binary** — download and run, no installation dependencies
 
 ## Quick Start
 
 ```bash
-# インストール（Linux / macOS）
+# Install (Linux / macOS)
 curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
-# ログイン
+# Login
 glasp login
 
-# 既存プロジェクトのクローン
+# Clone an existing project
 glasp clone <script-id>
 
-# ファイルの取得・反映
+# Pull and push files
 glasp pull
 glasp push
 ```
 
-デフォルトでは `~/.local/bin` にインストールされます。変更する場合:
+Installs to `~/.local/bin` by default. To change the install directory:
 
 ```bash
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
-> **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。
+> **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex`
 
-詳しくは [Installation](installation) と [Usage](usage) をご覧ください。
+See [Installation](installation) and [Usage](usage) for details.
 
 ## Supply-Chain Security
 
-glasp はサプライチェーンセキュリティを重視しています。
+glasp takes supply-chain security seriously.
 
-- リリースバイナリは [cosign](https://github.com/sigstore/cosign) で署名済み
-- [SLSA Level 3](https://slsa.dev/) の来歴証明 (provenance) を付与
-- [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp) でセキュリティスコアを公開
-- 全 GitHub Actions をコミットハッシュで固定
+- Release binaries are signed with [cosign](https://github.com/sigstore/cosign)
+- [SLSA Level 3](https://slsa.dev/) provenance attached to releases
+- [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp) published
+- All GitHub Actions pinned to commit SHA
