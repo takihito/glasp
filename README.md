@@ -30,11 +30,13 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-Installs to `~/.local/bin` by default. No `sudo` required. If `~/.local/bin` is not in your PATH, add it to your shell profile:
+Installs to `~/.local/bin` by default (Linux/macOS). No `sudo` required. If `~/.local/bin` is not in your PATH, add it to your shell profile (`~/.bashrc`, `~/.zshrc`):
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+> **Windows:** The PowerShell installer adds `%LOCALAPPDATA%\glasp\bin` to PATH automatically.
 
 To change the install directory:
 

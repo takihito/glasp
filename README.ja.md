@@ -30,11 +30,13 @@ curl -sSL https://takihito.github.io/glasp/install.sh | sh
 irm https://takihito.github.io/glasp/install.ps1 | iex
 ```
 
-デフォルトで `~/.local/bin` にインストールされます。`sudo` は不要です。`~/.local/bin` が PATH に含まれていない場合は、シェルの設定ファイルに追記してください:
+デフォルトで `~/.local/bin` にインストールされます（Linux/macOS）。`sudo` は不要です。`~/.local/bin` が PATH に含まれていない場合は、シェルの設定ファイル（`~/.bashrc`, `~/.zshrc`）に追記してください:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+> **Windows:** PowerShell インストーラーが `%LOCALAPPDATA%\glasp\bin` を PATH に自動追加します。
 
 インストール先を変更する場合:
 
