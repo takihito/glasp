@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.1](https://github.com/takihito/glasp/compare/v0.2.0...v0.2.1) - 2026-04-11
+- Fix SLSA provenance: private-repository 誤検知を修正 by @takihito in https://github.com/takihito/glasp/pull/27
+
 ## [v0.2.0](https://github.com/takihito/glasp/compare/v0.1.2...v0.2.0) - 2026-04-10
 - GitHub Pages サイトを追加 (Cayman テーマ) by @takihito in https://github.com/takihito/glasp/pull/23
 - Add one-liner install scripts for Linux/macOS/Windows by @takihito in https://github.com/takihito/glasp/pull/25
