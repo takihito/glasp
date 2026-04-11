@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.4](https://github.com/takihito/glasp/compare/v0.2.3...v0.2.4) - 2026-04-11
+- Immutable Releases 対応: ドラフト維持 + provenance 後に公開 by @takihito in https://github.com/takihito/glasp/pull/33
+
 ## [v0.2.3](https://github.com/takihito/glasp/compare/v0.2.2...v0.2.3) - 2026-04-11
 - Fix SLSA workflow ref format (@v2.1.0) by @takihito in https://github.com/takihito/glasp/pull/31
 
