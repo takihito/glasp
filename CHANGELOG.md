@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.0](https://github.com/takihito/glasp/compare/v0.1.2...v0.2.0) - 2026-04-10
+- GitHub Pages サイトを追加 (Cayman テーマ) by @takihito in https://github.com/takihito/glasp/pull/23
+- Add one-liner install scripts for Linux/macOS/Windows by @takihito in https://github.com/takihito/glasp/pull/25
+- インストールスクリプトの改善 (sudo不要化・macOS対応) by @takihito in https://github.com/takihito/glasp/pull/26
+
 ## [v0.1.2](https://github.com/takihito/glasp/compare/v0.1.1...v0.1.2) - 2026-04-09
 - Add OpenSSF Scorecard workflow and badge by @takihito in https://github.com/takihito/glasp/pull/16
 - Fix upload-artifact commit hash in scorecard workflow by @takihito in https://github.com/takihito/glasp/pull/18
