@@ -1,6 +1,7 @@
 ---
 layout: default
-title: Usage
+title: glasp Usage
+description: Usage instructions for glasp, the Google Apps Script CLI in Go.
 ---
 
 # Usage

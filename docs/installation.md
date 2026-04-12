@@ -1,6 +1,7 @@
 ---
 layout: default
-title: Installation
+title: glasp Installation
+description: Installation instructions for glasp, the Google Apps Script CLI in Go.
 ---
 
 # Installation
