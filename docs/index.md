@@ -1,13 +1,14 @@
 ---
 layout: default
-title: Home
+title: glasp - Google Apps Script CLI in Go
+description: glasp is a Go-based CLI tool for managing Google Apps Script projects, fully compatible 
 ---
 
 # glasp
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/takihito/glasp/badge)](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp)
 
-**glasp** is a Go CLI tool for managing Google Apps Script projects.
+glasp is a Go CLI tool for managing Google Apps Script projects.
 A single-binary, high-performance replacement for Node.js-based [clasp](https://github.com/google/clasp).
 
 [日本語ドキュメント](ja/)
@@ -50,9 +51,7 @@ See [Installation](installation) and [Usage](usage) for details.
 
 ## Supply-Chain Security
 
-glasp takes supply-chain security seriously.
-
 - Release binaries are signed with [cosign](https://github.com/sigstore/cosign)
 - [SLSA Level 3](https://slsa.dev/) provenance attached to releases
+- [https://socket.dev/](https://socket.dev/) for dependency analysis and monitoring
 - [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp) published
-- All GitHub Actions pinned to commit SHA
