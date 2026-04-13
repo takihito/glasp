@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.6](https://github.com/takihito/glasp/compare/v0.2.5...v0.2.6) - 2026-04-12
+- updare Readme and docs by @takihito in https://github.com/takihito/glasp/pull/37
+
 ## [v0.2.5](https://github.com/takihito/glasp/compare/v0.2.4...v0.2.5) - 2026-04-11
 - PATH 設定手順をドキュメントに追記 by @takihito in https://github.com/takihito/glasp/pull/35
 
