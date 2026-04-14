@@ -65,7 +65,7 @@ func EnsureAccessToken(ctx context.Context, source Source) (*http.Client, error)
 	case SourceKindAuthJSON:
 		content := strings.TrimSpace(source.Content)
 		if content == "" {
-			return nil, fmt.Errorf("auth JSON content is empty")
+			return nil, fmt.Errorf("GLASP_AUTH is empty")
 		}
 		return clientFromAuthJSONFn(ctx, content)
 	case SourceKindAuthFile:

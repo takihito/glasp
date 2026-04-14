@@ -29,7 +29,9 @@ runs:
         GLASP_INSTALL_DIR: ${{ runner.temp }}/glasp-bin
       run: |
         mkdir -p "$GLASP_INSTALL_DIR"
-        curl -sSL https://takihito.github.io/glasp/install.sh | sh
+        install_script="$RUNNER_TEMP/glasp-install.sh"
+        curl -fsSL https://takihito.github.io/glasp/install.sh -o "$install_script"
+        sh "$install_script"
         echo "$GLASP_INSTALL_DIR" >> "$GITHUB_PATH"
 
     - name: Export GLASP_AUTH
