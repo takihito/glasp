@@ -267,6 +267,33 @@ Google Cloud Console からダウンロードした `installed` および `web` 
 
 `--auth` で指定したファイルに `refresh_token` と OAuth クライアント認証情報が含まれている場合、glasp はアクセストークンを自動的に更新し、更新後のトークンをファイルに書き戻します。手動での更新操作なしに、セッションをまたいで認証情報を有効に保ちます。
 
+## GitHub Actions
+
+glasp は GitHub Actions ワークフロー内でのインストールと認証をまとめて行える Composite Action を提供しています。
+
+### セットアップ
+
+1. ローカルで `glasp login` を実行し、`~/.clasprc.json` の内容をコピーします
+2. リポジトリシークレット `GLASP_AUTH` として登録します（**Settings → Secrets and variables → Actions**）
+
+### 使い方
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: takihito/glasp@v1.2.0
+    with:
+      version: 'v1.2.0'                # 特定リリースに固定
+      auth: ${{ secrets.GLASP_AUTH }}
+  - run: glasp push
+```
+
+`auth` を設定すると、glasp が `GLASP_AUTH` 環境変数を通じて自動的に認証情報を読み取ります。各コマンドへの `--auth` フラグは不要です。
+
+認証ソースの優先順位：`--auth` フラグ → `GLASP_AUTH` 環境変数 → プロジェクトキャッシュ
+
+デプロイメント作成や TypeScript プロジェクトを含む詳細な使用例は [GitHub Actions ドキュメント](https://takihito.github.io/glasp/ja/github-actions) を参照してください。
+
 ## 開発
 
 ```bash
