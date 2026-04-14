@@ -209,6 +209,27 @@ func ClientFromAuthFile(ctx context.Context, authPath string) (*http.Client, err
 	return clientFromAuthFileWithRefresh(ctx, authPath)
 }
 
+// ClientFromAuthJSON creates an authenticated HTTP client from raw .clasprc.json
+// content (e.g. the value of the GLASP_AUTH environment variable).
+// Refreshed tokens are not persisted to disk.
+func ClientFromAuthJSON(ctx context.Context, jsonContent string) (*http.Client, error) {
+	return clientFromAuthJSON(ctx, jsonContent)
+}
+
+func clientFromAuthJSON(ctx context.Context, jsonContent string) (*http.Client, error) {
+	trimmed := strings.TrimSpace(jsonContent)
+	if trimmed == "" {
+		return nil, fmt.Errorf("GLASP_AUTH content is empty")
+	}
+	var payload authFilePayload
+	if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse GLASP_AUTH content: %w", err)
+	}
+	// persistPath is empty: CI environments are ephemeral so token refresh is
+	// not written back to disk.
+	return buildClientFromPayload(ctx, &payload, "GLASP_AUTH", "")
+}
+
 type persistingTokenSource struct {
 	base         oauth2.TokenSource
 	authPath     string

@@ -1,0 +1,42 @@
+name: 'glasp'
+description: 'Install glasp — a high-performance Google Apps Script CLI — and authenticate for CI use'
+branding:
+  icon: 'upload-cloud'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'glasp version to install (e.g., v1.0.0). Defaults to latest release.'
+    required: false
+    default: ''
+  auth:
+    description: |
+      JSON content of .clasprc.json for authentication.
+      Store this value as a repository secret and pass it as:
+        auth: ${{ secrets.GLASP_AUTH }}
+      When provided, the value is exported as the GLASP_AUTH environment variable
+      so that subsequent glasp commands authenticate without a --auth flag.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Install glasp
+      shell: bash
+      env:
+        GLASP_VERSION: ${{ inputs.version }}
+        GLASP_INSTALL_DIR: ${{ runner.temp }}/glasp-bin
+      run: |
+        mkdir -p "$GLASP_INSTALL_DIR"
+        curl -sSL https://takihito.github.io/glasp/install.sh | sh
+        echo "$GLASP_INSTALL_DIR" >> "$GITHUB_PATH"
+
+    - name: Export GLASP_AUTH
+      if: ${{ inputs.auth != '' }}
+      shell: bash
+      env:
+        _INPUT_AUTH: ${{ inputs.auth }}
+      run: |
+        delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
+        printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"

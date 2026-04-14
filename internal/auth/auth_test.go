@@ -639,3 +639,94 @@ func TestPersistingTokenSourceConcurrentTokenCalls(t *testing.T) {
 		t.Fatalf("expected persisted access token 'new', got %q", updated.Token.AccessToken)
 	}
 }
+
+func TestClientFromAuthJSONUsesAccessToken(t *testing.T) {
+	var authHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	const jsonContent = `{"token":{"access_token":"tok123","token_type":"Bearer"}}`
+	client, err := ClientFromAuthJSON(context.Background(), jsonContent)
+	if err != nil {
+		t.Fatalf("ClientFromAuthJSON failed: %v", err)
+	}
+	resp, err := client.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	if authHeader != "Bearer tok123" {
+		t.Fatalf("expected Authorization 'Bearer tok123', got %q", authHeader)
+	}
+}
+
+func TestClientFromAuthJSONRequiresAccessToken(t *testing.T) {
+	if _, err := ClientFromAuthJSON(context.Background(), `{"token":{}}`); err == nil {
+		t.Fatalf("expected error when access_token is missing")
+	}
+}
+
+func TestClientFromAuthJSONRejectsEmptyContent(t *testing.T) {
+	if _, err := ClientFromAuthJSON(context.Background(), "   "); err == nil {
+		t.Fatalf("expected error for empty JSON content")
+	}
+}
+
+func TestClientFromAuthJSONRefreshesToken(t *testing.T) {
+	var authHeader string
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiServer.Close()
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"refreshed-tok","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+
+	origGoogleEndpoint := google.Endpoint
+	t.Cleanup(func() { google.Endpoint = origGoogleEndpoint })
+	google.Endpoint = oauth2.Endpoint{
+		AuthURL:  tokenServer.URL + "/auth",
+		TokenURL: tokenServer.URL,
+	}
+
+	const jsonContent = `{
+  "oauth2ClientSettings": {"clientId": "cid", "clientSecret": "csecret"},
+  "token": {
+    "access_token": "old-tok",
+    "refresh_token": "ref-tok",
+    "token_type": "Bearer",
+    "expiry_date": 1
+  }
+}`
+	client, err := ClientFromAuthJSON(context.Background(), jsonContent)
+	if err != nil {
+		t.Fatalf("ClientFromAuthJSON failed: %v", err)
+	}
+	resp, err := client.Get(apiServer.URL)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	if authHeader != "Bearer refreshed-tok" {
+		t.Fatalf("expected refreshed bearer token, got %q", authHeader)
+	}
+}
+
+func TestClientFromAuthJSONRequiresCredentialsForRefresh(t *testing.T) {
+	const jsonContent = `{
+  "token": {
+    "refresh_token": "ref-tok",
+    "token_type": "Bearer"
+  }
+}`
+	if _, err := ClientFromAuthJSON(context.Background(), jsonContent); err == nil {
+		t.Fatalf("expected error when clientId/clientSecret are missing for refresh")
+	}
+}

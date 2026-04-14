@@ -1708,6 +1708,11 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 			Kind: auth.SourceKindAuthFile,
 			Path: authPath,
 		}
+	case strings.TrimSpace(os.Getenv("GLASP_AUTH")) != "":
+		source = auth.Source{
+			Kind:    auth.SourceKindAuthJSON,
+			Content: os.Getenv("GLASP_AUTH"),
+		}
 	case strings.TrimSpace(cacheFile) != "":
 		source = auth.Source{
 			Kind: auth.SourceKindProjectCache,
