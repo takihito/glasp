@@ -108,8 +108,15 @@ func buildClientFromPayload(ctx context.Context, payload *authFilePayload, sourc
 
 	clientID, clientSecret := oauthCredentialsFromPayload(payload)
 	if strings.TrimSpace(token.RefreshToken) != "" {
+		// If the auth payload carries no client credentials, fall back to the
+		// credentials embedded at build time (ldflags) or GLASP_CLIENT_ID/SECRET.
 		if clientID == "" || clientSecret == "" {
-			return nil, fmt.Errorf("%s requires clientId/clientSecret to refresh token", source)
+			embedded, err := Config()
+			if err != nil {
+				return nil, fmt.Errorf("%s has no clientId/clientSecret and embedded credentials are unavailable: %w", source, err)
+			}
+			clientID = embedded.ClientID
+			clientSecret = embedded.ClientSecret
 		}
 		oauthConfig := buildOAuthConfig(clientID, clientSecret)
 		forcedRefreshSeed := &oauth2.Token{

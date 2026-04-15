@@ -720,6 +720,7 @@ func TestClientFromAuthJSONRefreshesToken(t *testing.T) {
 }
 
 func TestClientFromAuthJSONRequiresCredentialsForRefresh(t *testing.T) {
+	// No client credentials in payload AND no embedded credentials → must error.
 	const jsonContent = `{
   "token": {
     "refresh_token": "ref-tok",
@@ -728,5 +729,119 @@ func TestClientFromAuthJSONRequiresCredentialsForRefresh(t *testing.T) {
 }`
 	if _, err := ClientFromAuthJSON(context.Background(), jsonContent); err == nil {
 		t.Fatalf("expected error when clientId/clientSecret are missing for refresh")
+	}
+}
+
+func TestClientFromAuthJSONFallsBackToEmbeddedCredentials(t *testing.T) {
+	// Payload has refresh_token but NO client credentials.
+	// Embedded credentials (ldflagsClientID/Secret) are set → should succeed.
+	origID := ldflagsClientID
+	origSecret := ldflagsClientSecret
+	t.Cleanup(func() {
+		ldflagsClientID = origID
+		ldflagsClientSecret = origSecret
+	})
+	ldflagsClientID = "embedded-cid"
+	ldflagsClientSecret = "embedded-csecret"
+
+	var authHeader string
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiServer.Close()
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"refreshed-tok","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+
+	origGoogleEndpoint := google.Endpoint
+	t.Cleanup(func() { google.Endpoint = origGoogleEndpoint })
+	google.Endpoint = oauth2.Endpoint{
+		AuthURL:  tokenServer.URL + "/auth",
+		TokenURL: tokenServer.URL,
+	}
+
+	// No clientId/clientSecret in payload — must fall back to ldflagsClientID/Secret.
+	const jsonContent = `{
+  "token": {
+    "access_token": "old-tok",
+    "refresh_token": "ref-tok",
+    "token_type": "Bearer",
+    "expiry_date": 1
+  }
+}`
+	client, err := ClientFromAuthJSON(context.Background(), jsonContent)
+	if err != nil {
+		t.Fatalf("ClientFromAuthJSON should succeed with embedded credentials fallback: %v", err)
+	}
+	resp, err := client.Get(apiServer.URL)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	if authHeader != "Bearer refreshed-tok" {
+		t.Fatalf("expected refreshed bearer token, got %q", authHeader)
+	}
+}
+
+func TestClientFromAuthFileFallsBackToEmbeddedCredentials(t *testing.T) {
+	// Same scenario but via ClientFromAuthFile (--auth flag path).
+	origID := ldflagsClientID
+	origSecret := ldflagsClientSecret
+	t.Cleanup(func() {
+		ldflagsClientID = origID
+		ldflagsClientSecret = origSecret
+	})
+	ldflagsClientID = "embedded-cid"
+	ldflagsClientSecret = "embedded-csecret"
+
+	var authHeader string
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiServer.Close()
+
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"refreshed-tok","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer tokenServer.Close()
+
+	origGoogleEndpoint := google.Endpoint
+	t.Cleanup(func() { google.Endpoint = origGoogleEndpoint })
+	google.Endpoint = oauth2.Endpoint{
+		AuthURL:  tokenServer.URL + "/auth",
+		TokenURL: tokenServer.URL,
+	}
+
+	root := t.TempDir()
+	authFile := filepath.Join(root, ".clasprc.json")
+	content := `{
+  "token": {
+    "access_token": "old-tok",
+    "refresh_token": "ref-tok",
+    "token_type": "Bearer",
+    "expiry_date": 1
+  }
+}`
+	if err := os.WriteFile(authFile, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write auth file: %v", err)
+	}
+
+	client, err := ClientFromAuthFile(context.Background(), authFile)
+	if err != nil {
+		t.Fatalf("ClientFromAuthFile should succeed with embedded credentials fallback: %v", err)
+	}
+	resp, err := client.Get(apiServer.URL)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	if authHeader != "Bearer refreshed-tok" {
+		t.Fatalf("expected refreshed bearer token, got %q", authHeader)
 	}
 }
