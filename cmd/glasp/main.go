@@ -63,6 +63,7 @@ var scriptIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
+	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -986,6 +987,11 @@ func main() {
 		kong.Description("A Go-based Google Apps Script CLI (clasp alternative)."),
 		kong.UsageOnError(),
 	)
+	if dir := strings.TrimSpace(cli.Dir); dir != "" {
+		if err := os.Chdir(dir); err != nil {
+			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
+		}
+	}
 	err := ctx.Run(&cli)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err)
 	if err != nil {

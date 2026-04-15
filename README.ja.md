@@ -294,6 +294,16 @@ steps:
 
 認証ソースの優先順位：`--auth` フラグ → `GLASP_AUTH` 環境変数 → プロジェクトキャッシュ
 
+`.clasp.json` がサブディレクトリにある場合は `working-directory` input を使います（`GLASP_DIR` がセットされます）：
+
+```yaml
+- uses: takihito/glasp@v1.2.0
+  with:
+    version: 'v1.2.0'
+    auth: ${{ secrets.GLASP_AUTH }}
+    working-directory: 'apps-script'
+```
+
 デプロイメント作成や TypeScript プロジェクトを含む詳細な使用例は [GitHub Actions ドキュメント](https://takihito.github.io/glasp/ja/github-actions) を参照してください。
 
 ## 開発

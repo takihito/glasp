@@ -1939,3 +1939,61 @@ func TestSanitizeHistoryArgsShortFlags(t *testing.T) {
 		}
 	}
 }
+
+func TestCLIDirFlagParsed(t *testing.T) {
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"--dir", "/tmp", "version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp, got %q", cli.Dir)
+	}
+}
+
+func TestCLIDirEnvVar(t *testing.T) {
+	t.Setenv("GLASP_DIR", "/tmp")
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp from GLASP_DIR, got %q", cli.Dir)
+	}
+}
+
+func TestCLIDirShortFlag(t *testing.T) {
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"-C", "/tmp", "version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp via -C, got %q", cli.Dir)
+	}
+}
+
+func TestSanitizeHistoryArgsDirNotRedacted(t *testing.T) {
+	args := []string{"push", "--dir", "/workspace/gas", "--auth", "/tmp/.clasprc.json"}
+	got := sanitizeHistoryArgs(args)
+	if got[2] == "REDACTED" {
+		t.Fatalf("--dir value should not be redacted, but was")
+	}
+	if got[2] != "/workspace/gas" {
+		t.Fatalf("expected --dir value preserved as /workspace/gas, got %q", got[2])
+	}
+	// --auth should still be redacted
+	if got[4] != "REDACTED" {
+		t.Fatalf("expected --auth value to be redacted, got %q", got[4])
+	}
+}

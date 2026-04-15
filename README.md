@@ -294,6 +294,16 @@ When `auth` is provided, glasp automatically picks it up via the `GLASP_AUTH` en
 
 Auth source priority: `--auth` flag → `GLASP_AUTH` env var → project cache
 
+If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `GLASP_DIR`):
+
+```yaml
+- uses: takihito/glasp@v1.2.0
+  with:
+    version: 'v1.2.0'
+    auth: ${{ secrets.GLASP_AUTH }}
+    working-directory: 'apps-script'
+```
+
 See the [GitHub Actions documentation](https://takihito.github.io/glasp/github-actions) for full examples including deployments and TypeScript projects.
 
 ## Development

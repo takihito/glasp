@@ -18,6 +18,14 @@ inputs:
       so that subsequent glasp commands authenticate without a --auth flag.
     required: false
     default: ''
+  working-directory:
+    description: |
+      Directory containing .clasp.json. Relative paths are resolved from the
+      workspace root. When provided, the value is exported as the GLASP_DIR
+      environment variable so that all subsequent glasp commands run from
+      that directory without a --dir flag.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -42,3 +50,11 @@ runs:
       run: |
         delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
         printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"
+
+    - name: Export GLASP_DIR
+      if: ${{ inputs.working-directory != '' }}
+      shell: bash
+      env:
+        _INPUT_DIR: ${{ inputs.working-directory }}
+      run: |
+        printf 'GLASP_DIR=%s\n' "$(cd "$GITHUB_WORKSPACE" && realpath "$_INPUT_DIR")" >> "$GITHUB_ENV"

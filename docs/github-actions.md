@@ -14,6 +14,7 @@ glasp provides a composite action that lets you install glasp and authenticate d
 |-------|----------|---------|-------------|
 | `version` | No | latest | glasp version to install (e.g. `v1.2.0`). Omit to use the latest release. |
 | `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets the `GLASP_AUTH` environment variable for subsequent steps. |
+| `working-directory` | No | | Directory containing `.clasp.json`, relative to workspace root. When provided, sets the `GLASP_DIR` environment variable so that all subsequent `glasp` commands run from that directory. |
 
 ## Setup
 
@@ -130,6 +131,31 @@ When `auth` is set, the action exports its value as the `GLASP_AUTH` environment
 1. `--auth <path>` flag
 2. `GLASP_AUTH` environment variable ← set by this action
 3. Project cache (`.glasp/access.json`)
+
+## Monorepo / subdirectory projects
+
+If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
+
+```yaml
+- uses: takihito/glasp@v1.2.0
+  with:
+    version: 'v1.2.0'
+    auth: ${{ secrets.GLASP_AUTH }}
+    working-directory: 'apps-script'   # contains .clasp.json
+```
+
+This sets `GLASP_DIR=<absolute path>` as an environment variable. Every subsequent `glasp` command picks it up automatically — no `--dir` flag or `working-directory:` needed on each step.
+
+You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environment variable directly:
+
+```yaml
+- run: glasp push
+  env:
+    GLASP_DIR: apps-script
+
+# or equivalently:
+- run: glasp --dir apps-script push
+```
 
 ## Version pinning
 
