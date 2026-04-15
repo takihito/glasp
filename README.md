@@ -276,6 +276,10 @@ glasp provides a composite action to install and authenticate inside a GitHub Ac
 - Obtain credentials locally:
   - Run `clasp login` and copy the contents of `~/.clasprc.json`, or
   - Run `glasp login` and copy the contents of `.glasp/access.json`
+  ```bash
+  GLASP_AUTH=$(cat .glasp/access.json)   # glasp login
+  GLASP_AUTH=$(cat ~/.clasprc.json)      # clasp login
+  ```
 - Add it as a repository secret named `GLASP_AUTH` (**Settings → Secrets and variables → Actions**)
 
 ### Usage

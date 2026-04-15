@@ -36,6 +36,13 @@ clasp login
 cat ~/.clasprc.json
 ```
 
+You can also load the content into a shell variable for quick testing:
+
+```bash
+GLASP_AUTH=$(cat .glasp/access.json)   # from glasp login
+GLASP_AUTH=$(cat ~/.clasprc.json)      # from clasp login
+```
+
 ### 2. Add a repository secret
 
 Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `GLASP_AUTH`:

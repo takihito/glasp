@@ -32,6 +32,13 @@ clasp login
 cat ~/.clasprc.json
 ```
 
+シェル変数に読み込んで動作確認することもできます：
+
+```bash
+GLASP_AUTH=$(cat .glasp/access.json)   # glasp login の場合
+GLASP_AUTH=$(cat ~/.clasprc.json)      # clasp login の場合
+```
+
 ### 2. リポジトリシークレットに追加する
 
 `.glasp/access.json`, `.clasprc.json` の JSON 内容をコピーし `GLASP_AUTH` という名前のリポジトリシークレットとして登録します：
