@@ -17,18 +17,27 @@ glasp provides a composite action that lets you install glasp and authenticate d
 
 ## Setup
 
-### 1. Obtain `.clasprc.json`
+### 1. Obtain your credentials
 
-Log in with glasp (or clasp) on your local machine:
+Log in on your local machine and copy the JSON content of either file:
+
+**Using glasp:**
 
 ```bash
 glasp login
+cat .glasp/access.json
+```
+
+**Using clasp:**
+
+```bash
+clasp login
 cat ~/.clasprc.json
 ```
 
 ### 2. Add a repository secret
 
-Copy the entire JSON content of `~/.clasprc.json` and add it as a repository secret named `GLASP_AUTH`:
+Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `GLASP_AUTH`:
 
 **GitHub → Repository → Settings → Secrets and variables → Actions → New repository secret**
 
@@ -43,7 +52,7 @@ steps:
   - uses: takihito/glasp@v1.2.0
     with:
       version: 'v1.2.0'
-      auth: ${{ secrets.GLASP_AUTH }}
+      auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
   - run: glasp push
 ```
 
@@ -67,7 +76,7 @@ jobs:
       - uses: takihito/glasp@v1.2.0
         with:
           version: 'v1.2.0'
-          auth: ${{ secrets.GLASP_AUTH }}
+          auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
 
       - name: Push to Apps Script
         run: glasp push
@@ -91,7 +100,7 @@ jobs:
       - uses: takihito/glasp@v1.2.0
         with:
           version: 'v1.2.0'
-          auth: ${{ secrets.GLASP_AUTH }}
+          auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret
 
       - name: Push files
         run: glasp push
@@ -102,7 +111,7 @@ jobs:
 
 ### TypeScript project
 
-glasp automatically detects `.ts` files and transpiles them via esbuild before pushing. No additional configuration is needed:
+glasp automatically detects `.ts` files according to your `.clasp.json` settings and transpiles them via esbuild before pushing. No additional configuration is needed:
 
 ```yaml
 - uses: takihito/glasp@v1.2.0

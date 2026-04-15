@@ -273,8 +273,10 @@ glasp provides a composite action to install and authenticate inside a GitHub Ac
 
 ### Setup
 
-1. Run `glasp login` locally, then copy the contents of `~/.clasprc.json`
-2. Add it as a repository secret named `GLASP_AUTH` (**Settings → Secrets and variables → Actions**)
+- Obtain credentials locally:
+  - Run `clasp login` and copy the contents of `~/.clasprc.json`, or
+  - Run `glasp login` and copy the contents of `.glasp/access.json`
+- Add it as a repository secret named `GLASP_AUTH` (**Settings → Secrets and variables → Actions**)
 
 ### Usage
 
@@ -283,8 +285,8 @@ steps:
   - uses: actions/checkout@v4
   - uses: takihito/glasp@v1.2.0
     with:
-      version: 'v1.2.0'           # pin to a specific release
-      auth: ${{ secrets.GLASP_AUTH }}
+      version: 'v1.2.0'                # pin to a specific release
+      auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret
   - run: glasp push
 ```
 
