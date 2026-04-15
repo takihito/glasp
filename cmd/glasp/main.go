@@ -231,9 +231,9 @@ type OpenScriptCmd struct {
 func (c *OpenScriptCmd) Run(ctx *kong.Context) error {
 	scriptID := strings.TrimSpace(c.ScriptID)
 	if scriptID == "" {
-		projectRoot, err := os.Getwd()
+		projectRoot, err := findExistingProjectRoot()
 		if err != nil {
-			return fmt.Errorf("failed to determine project root: %w", err)
+			return err
 		}
 		cfg, err := config.LoadClaspConfig(projectRoot)
 		if err != nil {
@@ -268,9 +268,9 @@ func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID, err := scriptIDFromConfig(projectRoot)
 	if err != nil {
@@ -341,9 +341,9 @@ func (c *UpdateDeploymentCmd) Run(ctx *kong.Context) error {
 		return fmt.Errorf("deployment ID is required")
 	}
 
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -405,9 +405,9 @@ func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID := strings.TrimSpace(c.ScriptID)
 	if scriptID == "" {
@@ -476,9 +476,9 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 	if functionName == "" {
 		return fmt.Errorf("function name is required")
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID, err := scriptIDFromConfig(projectRoot)
 	if err != nil {
@@ -608,9 +608,9 @@ func (c *PullCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -729,9 +729,9 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	if c.Watch {
 		return fmt.Errorf("watch mode is not implemented yet")
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -1687,6 +1687,19 @@ func dryRunConvertLabelForPull(fileExtension string) string {
 		return convertLabel(transform.ModeGasToTS)
 	}
 	return convertLabel("")
+}
+
+// findExistingProjectRoot locates the nearest .clasp.json by searching upward
+// from the current directory. Returns an error if no .clasp.json is found.
+func findExistingProjectRoot() (string, error) {
+	root, err := config.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to determine project root: %w", err)
+	}
+	if root == "" {
+		return "", fmt.Errorf(".clasp.json not found in current directory or any parent directory")
+	}
+	return root, nil
 }
 
 func optionalAuthPath(raw string) (string, error) {
