@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -47,6 +48,7 @@ var (
 	execCommandFn                  = exec.Command
 	runtimeGOOS                    = runtime.GOOS
 	marshalJSONFn                  = json.Marshal
+	stdout         io.Writer       = os.Stdout
 )
 
 type runArchiveMeta struct {
@@ -1691,13 +1693,22 @@ func dryRunConvertLabelForPull(fileExtension string) string {
 
 // findExistingProjectRoot locates the nearest .clasp.json by searching upward
 // from the current directory. Returns an error if no .clasp.json is found.
+// When the project root differs from the current directory, the resolved path
+// is printed to stdout so users know which directory glasp is operating from.
 func findExistingProjectRoot() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to determine project root: %w", err)
+	}
 	root, err := config.FindProjectRoot()
 	if err != nil {
 		return "", fmt.Errorf("failed to determine project root: %w", err)
 	}
 	if root == "" {
 		return "", fmt.Errorf(".clasp.json not found in current directory or any parent directory")
+	}
+	if filepath.Clean(root) != filepath.Clean(cwd) {
+		fmt.Fprintf(stdout, "Project root: %s\n", root)
 	}
 	return root, nil
 }

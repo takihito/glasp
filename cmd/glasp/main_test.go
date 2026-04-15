@@ -2020,6 +2020,11 @@ func TestFindExistingProjectRootFindsParent(t *testing.T) {
 		t.Fatalf("Chdir failed: %v", err)
 	}
 
+	var buf strings.Builder
+	origStdout := stdout
+	stdout = &buf
+	t.Cleanup(func() { stdout = origStdout })
+
 	got, err := findExistingProjectRoot()
 	if err != nil {
 		t.Fatalf("findExistingProjectRoot failed: %v", err)
@@ -2028,6 +2033,43 @@ func TestFindExistingProjectRootFindsParent(t *testing.T) {
 	wantResolved, _ := filepath.EvalSymlinks(projectRoot)
 	if gotResolved != wantResolved {
 		t.Fatalf("expected project root %q, got %q", wantResolved, gotResolved)
+	}
+	// CWD != project root → should print "Project root: ..."
+	if !strings.Contains(buf.String(), "Project root:") {
+		t.Fatalf("expected 'Project root:' in output, got %q", buf.String())
+	}
+	if !strings.Contains(buf.String(), got) {
+		t.Fatalf("expected output to contain resolved path %q, got %q", got, buf.String())
+	}
+}
+
+func TestFindExistingProjectRootNoOutputWhenAtRoot(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectRoot, ".clasp.json"), []byte(`{"scriptId":"abc"}`), 0644); err != nil {
+		t.Fatalf("failed to write .clasp.json: %v", err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+
+	var buf strings.Builder
+	origStdout := stdout
+	stdout = &buf
+	t.Cleanup(func() { stdout = origStdout })
+
+	if _, err := findExistingProjectRoot(); err != nil {
+		t.Fatalf("findExistingProjectRoot failed: %v", err)
+	}
+	// CWD == project root → no output expected
+	if buf.Len() != 0 {
+		t.Fatalf("expected no output when already at project root, got %q", buf.String())
 	}
 }
 
