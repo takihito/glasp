@@ -13,7 +13,7 @@ glasp provides a composite action that lets you install glasp and authenticate d
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `version` | No | latest | glasp version to install (e.g. `v1.2.0`). Omit to use the latest release. |
-| `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets the `GLASP_AUTH` environment variable for subsequent steps. |
+| `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets `GLASP_AUTH` (JSON content) and `GLASP_AUTH_FILE` (path to a temp file containing the JSON) for subsequent steps. |
 | `working-directory` | No | | Directory containing `.clasp.json`, relative to workspace root. When provided, sets the `GLASP_DIR` environment variable so that all subsequent `glasp` commands run from that directory. |
 
 ## Setup
