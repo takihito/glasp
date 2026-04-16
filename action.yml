@@ -12,10 +12,10 @@ inputs:
   auth:
     description: |
       JSON content of .clasprc.json for authentication.
-      Store this value as a repository secret and pass it as:
-        auth: ${{ secrets.GLASP_AUTH }}
-      When provided, the value is exported as the GLASP_AUTH environment variable
-      so that subsequent glasp commands authenticate without a --auth flag.
+      Store this value as a repository secret (e.g. GLASP_AUTH) and reference it
+      via secrets.GLASP_AUTH in your workflow. When provided, the value is
+      exported as the GLASP_AUTH environment variable so that subsequent glasp
+      commands authenticate without a --auth flag.
     required: false
     default: ''
   working-directory:
