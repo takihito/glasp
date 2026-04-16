@@ -117,3 +117,34 @@ func TestEnsureAccessTokenTrimsAuthFilePath(t *testing.T) {
 		t.Fatalf("expected trimmed auth path, got %q", gotPath)
 	}
 }
+
+func TestEnsureAccessTokenAuthJSON(t *testing.T) {
+	origFn := clientFromAuthJSONFn
+	t.Cleanup(func() { clientFromAuthJSONFn = origFn })
+
+	var gotContent string
+	clientFromAuthJSONFn = func(ctx context.Context, content string) (*http.Client, error) {
+		gotContent = content
+		return &http.Client{}, nil
+	}
+
+	const jsonContent = `{"token":{"access_token":"tok"}}`
+	if _, err := EnsureAccessToken(context.Background(), Source{
+		Kind:    SourceKindAuthJSON,
+		Content: jsonContent,
+	}); err != nil {
+		t.Fatalf("EnsureAccessToken failed: %v", err)
+	}
+	if gotContent != jsonContent {
+		t.Fatalf("expected content %q, got %q", jsonContent, gotContent)
+	}
+}
+
+func TestEnsureAccessTokenAuthJSONEmptyContent(t *testing.T) {
+	if _, err := EnsureAccessToken(context.Background(), Source{
+		Kind:    SourceKindAuthJSON,
+		Content: "   ",
+	}); err == nil {
+		t.Fatalf("expected error for empty JSON content")
+	}
+}

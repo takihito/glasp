@@ -1939,3 +1939,159 @@ func TestSanitizeHistoryArgsShortFlags(t *testing.T) {
 		}
 	}
 }
+
+func TestCLIDirFlagParsed(t *testing.T) {
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"--dir", "/tmp", "version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp, got %q", cli.Dir)
+	}
+}
+
+func TestCLIDirEnvVar(t *testing.T) {
+	t.Setenv("GLASP_DIR", "/tmp")
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp from GLASP_DIR, got %q", cli.Dir)
+	}
+}
+
+func TestCLIDirShortFlag(t *testing.T) {
+	var cli CLI
+	p, err := kong.New(&cli)
+	if err != nil {
+		t.Fatalf("kong.New failed: %v", err)
+	}
+	if _, err = p.Parse([]string{"-C", "/tmp", "version"}); err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if cli.Dir != "/tmp" {
+		t.Fatalf("expected Dir=/tmp via -C, got %q", cli.Dir)
+	}
+}
+
+func TestSanitizeHistoryArgsDirNotRedacted(t *testing.T) {
+	args := []string{"push", "--dir", "/workspace/gas", "--auth", "/tmp/.clasprc.json"}
+	got := sanitizeHistoryArgs(args)
+	if got[2] == "REDACTED" {
+		t.Fatalf("--dir value should not be redacted, but was")
+	}
+	if got[2] != "/workspace/gas" {
+		t.Fatalf("expected --dir value preserved as /workspace/gas, got %q", got[2])
+	}
+	// --auth should still be redacted
+	if got[4] != "REDACTED" {
+		t.Fatalf("expected --auth value to be redacted, got %q", got[4])
+	}
+}
+
+func TestFindExistingProjectRootFindsParent(t *testing.T) {
+	// Setup: create a temp project root with .clasp.json, then cd into a subdir
+	projectRoot := t.TempDir()
+	claspJSON := filepath.Join(projectRoot, ".clasp.json")
+	if err := os.WriteFile(claspJSON, []byte(`{"scriptId":"abc123"}`), 0644); err != nil {
+		t.Fatalf("failed to write .clasp.json: %v", err)
+	}
+	subdir := filepath.Join(projectRoot, "src", "nested")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatalf("failed to create subdir: %v", err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	if err := os.Chdir(subdir); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+
+	var buf strings.Builder
+	origStderr := stderr
+	stderr = &buf
+	t.Cleanup(func() { stderr = origStderr })
+
+	got, err := findExistingProjectRoot()
+	if err != nil {
+		t.Fatalf("findExistingProjectRoot failed: %v", err)
+	}
+	gotResolved, _ := filepath.EvalSymlinks(got)
+	wantResolved, _ := filepath.EvalSymlinks(projectRoot)
+	if gotResolved != wantResolved {
+		t.Fatalf("expected project root %q, got %q", wantResolved, gotResolved)
+	}
+	// CWD != project root → should print "Project root: ..." to stderr
+	if !strings.Contains(buf.String(), "Project root:") {
+		t.Fatalf("expected 'Project root:' in stderr, got %q", buf.String())
+	}
+	if !strings.Contains(buf.String(), got) {
+		t.Fatalf("expected stderr to contain resolved path %q, got %q", got, buf.String())
+	}
+}
+
+func TestFindExistingProjectRootNoOutputWhenAtRoot(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectRoot, ".clasp.json"), []byte(`{"scriptId":"abc"}`), 0644); err != nil {
+		t.Fatalf("failed to write .clasp.json: %v", err)
+	}
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+
+	var buf strings.Builder
+	origStderr := stderr
+	stderr = &buf
+	t.Cleanup(func() { stderr = origStderr })
+
+	if _, err := findExistingProjectRoot(); err != nil {
+		t.Fatalf("findExistingProjectRoot failed: %v", err)
+	}
+	// CWD == project root → no output expected
+	if buf.Len() != 0 {
+		t.Fatalf("expected no stderr when already at project root, got %q", buf.String())
+	}
+}
+
+func TestFindExistingProjectRootNotFound(t *testing.T) {
+	// Setup: a temp dir with no .clasp.json anywhere above it
+	emptyDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+
+	if err := os.Chdir(emptyDir); err != nil {
+		t.Fatalf("Chdir failed: %v", err)
+	}
+
+	_, err = findExistingProjectRoot()
+	if err == nil {
+		t.Fatalf("expected error when .clasp.json is not found")
+	}
+	if !strings.Contains(err.Error(), ".clasp.json not found") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -47,6 +48,8 @@ var (
 	execCommandFn                  = exec.Command
 	runtimeGOOS                    = runtime.GOOS
 	marshalJSONFn                  = json.Marshal
+	stdout         io.Writer       = os.Stdout
+	stderr         io.Writer       = os.Stderr
 )
 
 type runArchiveMeta struct {
@@ -63,6 +66,7 @@ var scriptIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
+	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -230,9 +234,9 @@ type OpenScriptCmd struct {
 func (c *OpenScriptCmd) Run(ctx *kong.Context) error {
 	scriptID := strings.TrimSpace(c.ScriptID)
 	if scriptID == "" {
-		projectRoot, err := os.Getwd()
+		projectRoot, err := findExistingProjectRoot()
 		if err != nil {
-			return fmt.Errorf("failed to determine project root: %w", err)
+			return err
 		}
 		cfg, err := config.LoadClaspConfig(projectRoot)
 		if err != nil {
@@ -267,9 +271,9 @@ func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID, err := scriptIDFromConfig(projectRoot)
 	if err != nil {
@@ -340,9 +344,9 @@ func (c *UpdateDeploymentCmd) Run(ctx *kong.Context) error {
 		return fmt.Errorf("deployment ID is required")
 	}
 
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -404,9 +408,9 @@ func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID := strings.TrimSpace(c.ScriptID)
 	if scriptID == "" {
@@ -475,9 +479,9 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 	if functionName == "" {
 		return fmt.Errorf("function name is required")
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	scriptID, err := scriptIDFromConfig(projectRoot)
 	if err != nil {
@@ -607,9 +611,9 @@ func (c *PullCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -728,9 +732,9 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	if c.Watch {
 		return fmt.Errorf("watch mode is not implemented yet")
 	}
-	projectRoot, err := os.Getwd()
+	projectRoot, err := findExistingProjectRoot()
 	if err != nil {
-		return fmt.Errorf("failed to determine project root: %w", err)
+		return err
 	}
 	cfg, err := config.LoadClaspConfig(projectRoot)
 	if err != nil {
@@ -986,6 +990,11 @@ func main() {
 		kong.Description("A Go-based Google Apps Script CLI (clasp alternative)."),
 		kong.UsageOnError(),
 	)
+	if dir := strings.TrimSpace(cli.Dir); dir != "" {
+		if err := os.Chdir(dir); err != nil {
+			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
+		}
+	}
 	err := ctx.Run(&cli)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err)
 	if err != nil {
@@ -1683,6 +1692,28 @@ func dryRunConvertLabelForPull(fileExtension string) string {
 	return convertLabel("")
 }
 
+// findExistingProjectRoot locates the nearest .clasp.json by searching upward
+// from the current directory. Returns an error if no .clasp.json is found.
+// When the project root differs from the current directory, the resolved path
+// is printed to stdout so users know which directory glasp is operating from.
+func findExistingProjectRoot() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to determine project root: %w", err)
+	}
+	root, err := config.FindProjectRoot()
+	if err != nil {
+		return "", fmt.Errorf("failed to determine project root: %w", err)
+	}
+	if root == "" {
+		return "", fmt.Errorf(".clasp.json not found in current directory or any parent directory")
+	}
+	if filepath.Clean(root) != filepath.Clean(cwd) {
+		fmt.Fprintf(stderr, "Project root: %s\n", root)
+	}
+	return root, nil
+}
+
 func optionalAuthPath(raw string) (string, error) {
 	if raw == "" {
 		return "", nil
@@ -1707,6 +1738,11 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 		source = auth.Source{
 			Kind: auth.SourceKindAuthFile,
 			Path: authPath,
+		}
+	case strings.TrimSpace(os.Getenv("GLASP_AUTH")) != "":
+		source = auth.Source{
+			Kind:    auth.SourceKindAuthJSON,
+			Content: os.Getenv("GLASP_AUTH"),
 		}
 	case strings.TrimSpace(cacheFile) != "":
 		source = auth.Source{

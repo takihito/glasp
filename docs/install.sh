@@ -47,14 +47,17 @@ else
   exit 1
 fi
 
-# Get latest version
-echo "Fetching latest version..."
-VERSION="$(curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')"
+# Resolve version: positional arg > GLASP_VERSION env var > latest release
+VERSION="${1:-${GLASP_VERSION:-}}"
 if [ -z "$VERSION" ]; then
-  echo "Error: failed to fetch latest version"
-  exit 1
+  echo "Fetching latest version..."
+  VERSION="$(curl -sSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')"
+  if [ -z "$VERSION" ]; then
+    echo "Error: failed to fetch latest version"
+    exit 1
+  fi
 fi
-echo "Latest version: $VERSION"
+echo "Version: $VERSION"
 
 # Download to temp directory
 ARTIFACT="glasp_${VERSION}_${OS}_${ARCH}.tar.gz"

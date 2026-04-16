@@ -1,0 +1,65 @@
+name: 'glasp'
+description: 'Install glasp — a high-performance Google Apps Script CLI — and authenticate for CI use'
+branding:
+  icon: 'upload-cloud'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'glasp version to install (e.g., v1.0.0). Defaults to latest release.'
+    required: false
+    default: ''
+  auth:
+    description: |
+      JSON content of .clasprc.json for authentication.
+      Store this value as a repository secret and pass it as:
+        auth: ${{ secrets.GLASP_AUTH }}
+      When provided, the value is exported as the GLASP_AUTH environment variable
+      so that subsequent glasp commands authenticate without a --auth flag.
+    required: false
+    default: ''
+  working-directory:
+    description: |
+      Directory containing .clasp.json. Relative paths are resolved from the
+      workspace root. When provided, the value is exported as the GLASP_DIR
+      environment variable so that all subsequent glasp commands run from
+      that directory without a --dir flag.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Install glasp
+      shell: bash
+      env:
+        GLASP_VERSION: ${{ inputs.version }}
+        GLASP_INSTALL_DIR: ${{ runner.temp }}/glasp-bin
+        GLASP_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        mkdir -p "$GLASP_INSTALL_DIR"
+        sh "$GLASP_ACTION_PATH/docs/install.sh"
+        echo "$GLASP_INSTALL_DIR" >> "$GITHUB_PATH"
+
+    - name: Export GLASP_AUTH
+      if: ${{ inputs.auth != '' }}
+      shell: bash
+      env:
+        _INPUT_AUTH: ${{ inputs.auth }}
+      run: |
+        delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
+        printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"
+
+    - name: Export GLASP_DIR
+      if: ${{ inputs.working-directory != '' }}
+      shell: bash
+      env:
+        _INPUT_DIR: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        resolved_dir="$(cd "$GITHUB_WORKSPACE/$_INPUT_DIR" 2>/dev/null && pwd)"
+        if [ -z "$resolved_dir" ] || [ ! -d "$resolved_dir" ]; then
+          echo "Invalid working-directory: '$_INPUT_DIR' does not exist under $GITHUB_WORKSPACE" >&2
+          exit 1
+        fi
+        printf 'GLASP_DIR=%s\n' "$resolved_dir" >> "$GITHUB_ENV"

@@ -267,6 +267,49 @@ Also supported: `installed` and `web` credential formats from Google Cloud Conso
 
 When `--auth` is used with a file containing a `refresh_token` and OAuth client credentials, glasp automatically refreshes the access token and persists the updated token back to the file. This keeps your credentials valid across sessions without manual intervention.
 
+## GitHub Actions
+
+glasp provides a composite action to install and authenticate inside a GitHub Actions workflow.
+
+### Setup
+
+- Obtain credentials locally:
+  - Run `clasp login` and copy the contents of `~/.clasprc.json`, or
+  - Run `glasp login` and copy the contents of `.glasp/access.json`
+  ```bash
+  GLASP_AUTH=$(cat .glasp/access.json)   # glasp login
+  GLASP_AUTH=$(cat ~/.clasprc.json)      # clasp login
+  ```
+- Add it as a repository secret named `GLASP_AUTH` (**Settings → Secrets and variables → Actions**)
+
+### Usage
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: takihito/glasp@v1.2.0
+    with:
+      version: 'v1.2.0'                # pin to a specific release
+      auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret
+  - run: glasp push
+```
+
+When `auth` is provided, glasp automatically picks it up via the `GLASP_AUTH` environment variable — no `--auth` flag needed on each command.
+
+Auth source priority: `--auth` flag → `GLASP_AUTH` env var → project cache
+
+If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `GLASP_DIR`):
+
+```yaml
+- uses: takihito/glasp@v1.2.0
+  with:
+    version: 'v1.2.0'
+    auth: ${{ secrets.GLASP_AUTH }}
+    working-directory: 'apps-script'
+```
+
+See the [GitHub Actions documentation](https://takihito.github.io/glasp/github-actions) for full examples including deployments and TypeScript projects.
+
 ## Development
 
 ```bash

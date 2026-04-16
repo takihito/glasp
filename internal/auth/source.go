@@ -14,6 +14,7 @@ import (
 
 var (
 	clientFromAuthFileWithRefreshFn = clientFromAuthFileWithRefresh
+	clientFromAuthJSONFn            = clientFromAuthJSON
 	configFn                        = Config
 	loginWithCachePathFn            = LoginWithCachePath
 )
@@ -24,12 +25,17 @@ type SourceKind string
 const (
 	SourceKindProjectCache SourceKind = "project_cache"
 	SourceKindAuthFile     SourceKind = "auth_file"
+	// SourceKindAuthJSON is used when auth credentials are provided as raw
+	// JSON content (e.g. via the GLASP_AUTH environment variable) rather
+	// than a file path.
+	SourceKindAuthJSON SourceKind = "auth_json"
 )
 
 // Source represents a resolved authentication source.
 type Source struct {
-	Kind SourceKind
-	Path string
+	Kind    SourceKind
+	Path    string // used by SourceKindProjectCache and SourceKindAuthFile
+	Content string // raw JSON content, used by SourceKindAuthJSON
 }
 
 // ResolveAuthSource chooses auth source by CLI input.
@@ -56,6 +62,12 @@ func ResolveAuthSource(projectRoot, authPath string) (Source, error) {
 // EnsureAccessToken resolves an authenticated HTTP client and refreshes token if needed.
 func EnsureAccessToken(ctx context.Context, source Source) (*http.Client, error) {
 	switch source.Kind {
+	case SourceKindAuthJSON:
+		content := strings.TrimSpace(source.Content)
+		if content == "" {
+			return nil, fmt.Errorf("GLASP_AUTH is empty")
+		}
+		return clientFromAuthJSONFn(ctx, content)
 	case SourceKindAuthFile:
 		path := strings.TrimSpace(source.Path)
 		if path == "" {
@@ -82,17 +94,29 @@ func clientFromAuthFileWithRefresh(ctx context.Context, authPath string) (*http.
 	if err != nil {
 		return nil, err
 	}
+	return buildClientFromPayload(ctx, payload, "auth file "+cleanPath, cleanPath)
+}
 
+// buildClientFromPayload creates an OAuth client from a parsed authFilePayload.
+// source is used in error/log messages (e.g. "auth file /path/.clasprc.json" or "GLASP_AUTH").
+// persistPath, when non-empty, causes refreshed tokens to be written back to disk.
+func buildClientFromPayload(ctx context.Context, payload *authFilePayload, source, persistPath string) (*http.Client, error) {
 	token := tokenFromPayload(payload)
 	if token.TokenType == "" {
 		token.TokenType = "Bearer"
 	}
 
 	clientID, clientSecret := oauthCredentialsFromPayload(payload)
-	hasRefreshToken := strings.TrimSpace(token.RefreshToken) != ""
-	if hasRefreshToken {
+	if strings.TrimSpace(token.RefreshToken) != "" {
+		// If the auth payload carries no client credentials, fall back to the
+		// credentials embedded at build time (ldflags) or GLASP_CLIENT_ID/SECRET.
 		if clientID == "" || clientSecret == "" {
-			return nil, fmt.Errorf("auth file %s requires clientId/clientSecret to refresh token", cleanPath)
+			embedded, err := configFn()
+			if err != nil {
+				return nil, fmt.Errorf("%s has no clientId/clientSecret and embedded credentials are unavailable: %w", source, err)
+			}
+			clientID = embedded.ClientID
+			clientSecret = embedded.ClientSecret
 		}
 		oauthConfig := buildOAuthConfig(clientID, clientSecret)
 		forcedRefreshSeed := &oauth2.Token{
@@ -103,29 +127,35 @@ func clientFromAuthFileWithRefresh(ctx context.Context, authPath string) (*http.
 		refreshed, refreshErr := oauthConfig.TokenSource(ctx, forcedRefreshSeed).Token()
 		if refreshErr != nil {
 			if strings.TrimSpace(token.AccessToken) == "" {
-				return nil, fmt.Errorf("failed to refresh token from auth file %s: %w", cleanPath, refreshErr)
+				return nil, fmt.Errorf("failed to refresh token from %s: %w", source, refreshErr)
 			}
-			log.Printf("Warning: failed to refresh token from %s, falling back to token.access_token: %v", cleanPath, refreshErr)
+			log.Printf("Warning: failed to refresh token from %s, falling back to token.access_token: %v", source, refreshErr)
 		} else {
 			token = mergeRefreshedToken(token, refreshed)
-			if err := persistAuthToken(cleanPath, token); err != nil {
-				log.Printf("Warning: failed to persist refreshed token to %s: %v", cleanPath, err)
+			if persistPath != "" {
+				if err := persistAuthToken(persistPath, token); err != nil {
+					log.Printf("Warning: failed to persist refreshed token to %s: %v", persistPath, err)
+				}
 			}
 		}
 
-		tokenSource := oauth2.ReuseTokenSource(token, &persistingTokenSource{
-			base:         oauthConfig.TokenSource(ctx, token),
-			authPath:     cleanPath,
-			lastSnapshot: tokenSnapshotFromToken(token),
-			hasLast:      true,
-		})
+		var tokenSource oauth2.TokenSource
+		if persistPath != "" {
+			tokenSource = oauth2.ReuseTokenSource(token, &persistingTokenSource{
+				base:         oauthConfig.TokenSource(ctx, token),
+				authPath:     persistPath,
+				lastSnapshot: tokenSnapshotFromToken(token),
+				hasLast:      true,
+			})
+		} else {
+			tokenSource = oauthConfig.TokenSource(ctx, token)
+		}
 		return oauth2.NewClient(ctx, tokenSource), nil
 	}
 
 	if strings.TrimSpace(token.AccessToken) == "" {
-		return nil, fmt.Errorf("auth file %s is missing token.access_token", cleanPath)
+		return nil, fmt.Errorf("%s is missing token.access_token", source)
 	}
-
 	return oauth2.NewClient(ctx, oauth2.StaticTokenSource(token)), nil
 }
 
