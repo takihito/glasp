@@ -47,7 +47,7 @@ runs:
       env:
         _INPUT_AUTH: ${{ inputs.auth }}
       run: |
-        delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
+        delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' 2>/dev/null < /dev/urandom | head -c 16 || date +%s)"
         printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"
 
     - name: Export GLASP_DIR
