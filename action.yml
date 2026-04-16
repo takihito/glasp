@@ -35,11 +35,10 @@ runs:
       env:
         GLASP_VERSION: ${{ inputs.version }}
         GLASP_INSTALL_DIR: ${{ runner.temp }}/glasp-bin
+        GLASP_ACTION_PATH: ${{ github.action_path }}
       run: |
         mkdir -p "$GLASP_INSTALL_DIR"
-        install_script="$RUNNER_TEMP/glasp-install.sh"
-        curl -fsSL https://takihito.github.io/glasp/install.sh -o "$install_script"
-        sh "$install_script"
+        sh "$GLASP_ACTION_PATH/docs/install.sh"
         echo "$GLASP_INSTALL_DIR" >> "$GITHUB_PATH"
 
     - name: Export GLASP_AUTH
@@ -57,4 +56,10 @@ runs:
       env:
         _INPUT_DIR: ${{ inputs.working-directory }}
       run: |
-        printf 'GLASP_DIR=%s\n' "$(cd "$GITHUB_WORKSPACE" && realpath "$_INPUT_DIR")" >> "$GITHUB_ENV"
+        set -euo pipefail
+        resolved_dir="$(cd "$GITHUB_WORKSPACE/$_INPUT_DIR" 2>/dev/null && pwd)"
+        if [ -z "$resolved_dir" ] || [ ! -d "$resolved_dir" ]; then
+          echo "Invalid working-directory: '$_INPUT_DIR' does not exist under $GITHUB_WORKSPACE" >&2
+          exit 1
+        fi
+        printf 'GLASP_DIR=%s\n' "$resolved_dir" >> "$GITHUB_ENV"

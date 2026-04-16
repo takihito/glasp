@@ -49,6 +49,7 @@ var (
 	runtimeGOOS                    = runtime.GOOS
 	marshalJSONFn                  = json.Marshal
 	stdout         io.Writer       = os.Stdout
+	stderr         io.Writer       = os.Stderr
 )
 
 type runArchiveMeta struct {
@@ -1708,7 +1709,7 @@ func findExistingProjectRoot() (string, error) {
 		return "", fmt.Errorf(".clasp.json not found in current directory or any parent directory")
 	}
 	if filepath.Clean(root) != filepath.Clean(cwd) {
-		fmt.Fprintf(stdout, "Project root: %s\n", root)
+		fmt.Fprintf(stderr, "Project root: %s\n", root)
 	}
 	return root, nil
 }

@@ -721,6 +721,18 @@ func TestClientFromAuthJSONRefreshesToken(t *testing.T) {
 
 func TestClientFromAuthJSONRequiresCredentialsForRefresh(t *testing.T) {
 	// No client credentials in payload AND no embedded credentials → must error.
+	// Clear all credential sources to make the test environment-independent.
+	origID := ldflagsClientID
+	origSecret := ldflagsClientSecret
+	t.Cleanup(func() {
+		ldflagsClientID = origID
+		ldflagsClientSecret = origSecret
+	})
+	ldflagsClientID = ""
+	ldflagsClientSecret = ""
+	t.Setenv("GLASP_CLIENT_ID", "")
+	t.Setenv("GLASP_CLIENT_SECRET", "")
+
 	const jsonContent = `{
   "token": {
     "refresh_token": "ref-tok",
@@ -735,6 +747,7 @@ func TestClientFromAuthJSONRequiresCredentialsForRefresh(t *testing.T) {
 func TestClientFromAuthJSONFallsBackToEmbeddedCredentials(t *testing.T) {
 	// Payload has refresh_token but NO client credentials.
 	// Embedded credentials (ldflagsClientID/Secret) are set → should succeed.
+	// Clear env vars so the test verifies the ldflags path specifically.
 	origID := ldflagsClientID
 	origSecret := ldflagsClientSecret
 	t.Cleanup(func() {
@@ -743,6 +756,8 @@ func TestClientFromAuthJSONFallsBackToEmbeddedCredentials(t *testing.T) {
 	})
 	ldflagsClientID = "embedded-cid"
 	ldflagsClientSecret = "embedded-csecret"
+	t.Setenv("GLASP_CLIENT_ID", "")
+	t.Setenv("GLASP_CLIENT_SECRET", "")
 
 	var authHeader string
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -789,6 +804,7 @@ func TestClientFromAuthJSONFallsBackToEmbeddedCredentials(t *testing.T) {
 
 func TestClientFromAuthFileFallsBackToEmbeddedCredentials(t *testing.T) {
 	// Same scenario but via ClientFromAuthFile (--auth flag path).
+	// Clear env vars so the test verifies the ldflags path specifically.
 	origID := ldflagsClientID
 	origSecret := ldflagsClientSecret
 	t.Cleanup(func() {
@@ -797,6 +813,8 @@ func TestClientFromAuthFileFallsBackToEmbeddedCredentials(t *testing.T) {
 	})
 	ldflagsClientID = "embedded-cid"
 	ldflagsClientSecret = "embedded-csecret"
+	t.Setenv("GLASP_CLIENT_ID", "")
+	t.Setenv("GLASP_CLIENT_SECRET", "")
 
 	var authHeader string
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -2021,9 +2021,9 @@ func TestFindExistingProjectRootFindsParent(t *testing.T) {
 	}
 
 	var buf strings.Builder
-	origStdout := stdout
-	stdout = &buf
-	t.Cleanup(func() { stdout = origStdout })
+	origStderr := stderr
+	stderr = &buf
+	t.Cleanup(func() { stderr = origStderr })
 
 	got, err := findExistingProjectRoot()
 	if err != nil {
@@ -2034,12 +2034,12 @@ func TestFindExistingProjectRootFindsParent(t *testing.T) {
 	if gotResolved != wantResolved {
 		t.Fatalf("expected project root %q, got %q", wantResolved, gotResolved)
 	}
-	// CWD != project root → should print "Project root: ..."
+	// CWD != project root → should print "Project root: ..." to stderr
 	if !strings.Contains(buf.String(), "Project root:") {
-		t.Fatalf("expected 'Project root:' in output, got %q", buf.String())
+		t.Fatalf("expected 'Project root:' in stderr, got %q", buf.String())
 	}
 	if !strings.Contains(buf.String(), got) {
-		t.Fatalf("expected output to contain resolved path %q, got %q", got, buf.String())
+		t.Fatalf("expected stderr to contain resolved path %q, got %q", got, buf.String())
 	}
 }
 
@@ -2060,16 +2060,16 @@ func TestFindExistingProjectRootNoOutputWhenAtRoot(t *testing.T) {
 	}
 
 	var buf strings.Builder
-	origStdout := stdout
-	stdout = &buf
-	t.Cleanup(func() { stdout = origStdout })
+	origStderr := stderr
+	stderr = &buf
+	t.Cleanup(func() { stderr = origStderr })
 
 	if _, err := findExistingProjectRoot(); err != nil {
 		t.Fatalf("findExistingProjectRoot failed: %v", err)
 	}
 	// CWD == project root → no output expected
 	if buf.Len() != 0 {
-		t.Fatalf("expected no output when already at project root, got %q", buf.String())
+		t.Fatalf("expected no stderr when already at project root, got %q", buf.String())
 	}
 }
 

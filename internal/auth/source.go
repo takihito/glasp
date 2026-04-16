@@ -111,7 +111,7 @@ func buildClientFromPayload(ctx context.Context, payload *authFilePayload, sourc
 		// If the auth payload carries no client credentials, fall back to the
 		// credentials embedded at build time (ldflags) or GLASP_CLIENT_ID/SECRET.
 		if clientID == "" || clientSecret == "" {
-			embedded, err := Config()
+			embedded, err := configFn()
 			if err != nil {
 				return nil, fmt.Errorf("%s has no clientId/clientSecret and embedded credentials are unavailable: %w", source, err)
 			}
