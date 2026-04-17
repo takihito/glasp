@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.7](https://github.com/takihito/glasp/compare/v0.2.6...v0.2.7) - 2026-04-16
+- Bump google.golang.org/api from 0.274.0 to 0.275.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/40
+- Bump Songmu/tagpr from 1.17.1 to 1.18.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/41
+- Bump golang.org/x/sys from 0.42.0 to 0.43.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/42
+- Bump actions/upload-artifact from 4.6.2 to 7.0.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/43
+- Bump step-security/harden-runner from 2.16.1 to 2.17.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/44
+- feat: GitHub Actions support (action.yml + GLASP_AUTH env var) by @takihito in https://github.com/takihito/glasp/pull/47
+- fix: remove expression syntax from action.yml description field by @takihito in https://github.com/takihito/glasp/pull/48
+
 ## [v0.2.6](https://github.com/takihito/glasp/compare/v0.2.5...v0.2.6) - 2026-04-12
 - updare Readme and docs by @takihito in https://github.com/takihito/glasp/pull/37
 
