@@ -129,8 +129,8 @@ glasp automatically detects `.ts` files according to your `.clasp.json` settings
     version: 'v0.2.7'
     auth: ${{ secrets.GLASP_AUTH }}
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
-    glasp_client_id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
-    glasp_client_secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
+    client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
+    client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
 
 - name: Push project
   run: glasp push
@@ -144,7 +144,7 @@ Uses the `GLASP_AUTH` environment variable and uses the JSON content directly as
 - `GLASP_AUTH` environment variable
   - Content of `.glasp/access.json` file
   - Content of `~/.clasprc.json` file
-- When using OAuth2 client credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`), these are also exported as environment variables. This allows client credentials to be used in glasp's authentication flow. By specifying `glasp_client_id` and `glasp_client_secret` as input parameters in GitHub Actions, OAuth2 credentials can be securely managed.
+- When using OAuth2 client credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`), these are also exported as environment variables. This allows client credentials to be used in glasp's authentication flow. By specifying `client-id` and `client-secret` as input parameters in GitHub Actions, OAuth2 credentials can be securely managed.
 
 ## Monorepo / subdirectory projects
 
@@ -165,7 +165,7 @@ You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environ
 ```yaml
 - run: glasp push
   env:
-    GLASP_DIR: apps-script
+    GLASP_DIR: apps-script/dir
 
 # or equivalently:
 - run: glasp --dir apps-script/dir push

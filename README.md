@@ -306,8 +306,8 @@ If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `
     version: 'v0.2.7'
     auth: ${{ secrets.GLASP_AUTH }}
     working-directory: 'apps-script/dir' # directory containing .clasp.json (optional)
-    glasp_client_id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
-    glasp_client_secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
+    client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
+    client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
 ```
 
 See the [GitHub Actions documentation](https://takihito.github.io/glasp/github-actions) for full examples including deployments and TypeScript projects.

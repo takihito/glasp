@@ -306,8 +306,8 @@ steps:
     version: 'v0.2.7'
     auth: ${{ secrets.GLASP_AUTH }}
     working-directory: 'apps-script/dir' # .clasp.json があるディレクトリ（省略可）
-    glasp_client_id: ${{ secrets.GLASP_CLIENT_ID }}         # OAuth2 クライアントIDを指定する場合（省略可）
-    glasp_client_secret: ${{ secrets.GLASP_CLIENT_SECRET }} # OAuth2 クライアントシークレットを指定する場合（省略可）
+    client-id: ${{ secrets.GLASP_CLIENT_ID }}         # OAuth2 クライアントIDを指定する場合（省略可）
+    client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # OAuth2 クライアントシークレットを指定する場合（省略可）
 ```
 
 デプロイメント作成や TypeScript プロジェクトを含む詳細な使用例は [GitHub Actions ドキュメント](https://takihito.github.io/glasp/ja/github-actions) を参照してください。
