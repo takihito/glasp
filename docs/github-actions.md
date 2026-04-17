@@ -15,6 +15,8 @@ glasp provides a composite action that lets you install glasp and authenticate d
 | `version` | No | latest | glasp version to install (e.g. `v1.2.0`). Omit to use the latest release. |
 | `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets the `GLASP_AUTH` environment variable for subsequent steps. |
 | `working-directory` | No | | Directory containing `.clasp.json`, relative to workspace root. When provided, sets the `GLASP_DIR` environment variable so that all subsequent `glasp` commands run from that directory. |
+| `client-id` | No | | OAuth2 client ID. When provided, sets the `GLASP_CLIENT_ID` environment variable. |
+| `client-secret` | No | | OAuth2 client secret. When provided, sets the `GLASP_CLIENT_SECRET` environment variable. |
 
 ## Setup
 
