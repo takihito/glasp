@@ -26,6 +26,20 @@ inputs:
       that directory without a --dir flag.
     required: false
     default: ''
+  client-id:
+    description: |
+      OAuth2 client ID. When provided, exported as the GLASP_CLIENT_ID
+      environment variable so that subsequent glasp commands use these
+      credentials instead of the built-in defaults.
+    required: false
+    default: ''
+  client-secret:
+    description: |
+      OAuth2 client secret. When provided, exported as the GLASP_CLIENT_SECRET
+      environment variable so that subsequent glasp commands use these
+      credentials instead of the built-in defaults.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -49,6 +63,16 @@ runs:
       run: |
         delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
         printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"
+
+    - name: Export OAuth credentials
+      if: ${{ inputs.client-id != '' || inputs.client-secret != '' }}
+      shell: bash
+      env:
+        _INPUT_CLIENT_ID: ${{ inputs.client-id }}
+        _INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
+      run: |
+        if [ -n "$_INPUT_CLIENT_ID" ]; then printf 'GLASP_CLIENT_ID=%s\n' "$_INPUT_CLIENT_ID" >> "$GITHUB_ENV"; fi
+        if [ -n "$_INPUT_CLIENT_SECRET" ]; then printf 'GLASP_CLIENT_SECRET=%s\n' "$_INPUT_CLIENT_SECRET" >> "$GITHUB_ENV"; fi
 
     - name: Export GLASP_DIR
       if: ${{ inputs.working-directory != '' }}
