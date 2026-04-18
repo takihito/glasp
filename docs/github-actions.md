@@ -15,8 +15,8 @@ glasp provides a composite action that lets you install glasp and authenticate d
 | `version` | No | latest | glasp version to install (e.g. `v0.2.7`). Omit to use the latest release. |
 | `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets the `GLASP_AUTH` environment variable for subsequent steps. |
 | `working-directory` | No | | Directory containing `.clasp.json`, relative to workspace root. When provided, sets the `GLASP_DIR` environment variable so that all subsequent `glasp` commands run from that directory. |
-| `client-id` | No | | OAuth2 client ID. When provided, sets the `GLASP_CLIENT_ID` environment variable. |
-| `client-secret` | No | | OAuth2 client secret. When provided, sets the `GLASP_CLIENT_SECRET` environment variable. |
+| `client-id` | No | | OAuth2 client ID. Pass a repository secret here. When provided, sets the `GLASP_CLIENT_ID` environment variable. Must be set together with `client-secret`. |
+| `client-secret` | No | | OAuth2 client secret. Pass a repository secret here. When provided, sets the `GLASP_CLIENT_SECRET` environment variable. Must be set together with `client-id`. |
 
 ## Setup
 
@@ -138,13 +138,15 @@ glasp automatically detects `.ts` files according to your `.clasp.json` settings
 
 ## How authentication works
 
-Uses the `GLASP_AUTH` environment variable and uses the JSON content directly as credentials — no file on disk, no `glasp login` step required. Auth source priority inside glasp:
+When `auth` is set, the action exports its value as the `GLASP_AUTH` environment variable. glasp reads this variable and uses the JSON content directly as credentials — no file on disk, no `glasp login` step required. Auth source priority inside glasp:
 
-- `--auth <path>` flag
-- `GLASP_AUTH` environment variable
-  - Content of `.glasp/access.json` file
-  - Content of `~/.clasprc.json` file
-- When using OAuth2 client credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`), these are also exported as environment variables. This allows client credentials to be used in glasp's authentication flow. By specifying `client-id` and `client-secret` as input parameters in GitHub Actions, OAuth2 credentials can be securely managed.
+1. `--auth <path>` flag
+2. `GLASP_AUTH` environment variable ← set by this action
+3. Project cache (`.glasp/access.json`)
+
+To populate `GLASP_AUTH`, copy the JSON content of `.glasp/access.json` (from `glasp login`) or `~/.clasprc.json` (from `clasp login`) into a repository secret.
+
+When `client-id` and `client-secret` are set, the action also exports `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET`, allowing glasp's OAuth flow to use custom credentials instead of the built-in defaults.
 
 ## Monorepo / subdirectory projects
 

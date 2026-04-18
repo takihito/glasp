@@ -28,16 +28,22 @@ inputs:
     default: ''
   client-id:
     description: |
-      OAuth2 client ID. When provided, exported as the GLASP_CLIENT_ID
-      environment variable so that subsequent glasp commands use these
-      credentials instead of the built-in defaults.
+      OAuth2 client ID. Store this value as a repository or organization
+      secret (e.g. GLASP_CLIENT_ID) and reference it via
+      secrets.GLASP_CLIENT_ID in your workflow. When provided, exported as
+      the GLASP_CLIENT_ID environment variable so that subsequent glasp
+      commands use these credentials instead of the built-in defaults.
+      Must be provided together with client-secret.
     required: false
     default: ''
   client-secret:
     description: |
-      OAuth2 client secret. When provided, exported as the GLASP_CLIENT_SECRET
-      environment variable so that subsequent glasp commands use these
-      credentials instead of the built-in defaults.
+      OAuth2 client secret. Store this value as a repository or organization
+      secret (e.g. GLASP_CLIENT_SECRET) and reference it via
+      secrets.GLASP_CLIENT_SECRET in your workflow. When provided, exported
+      as the GLASP_CLIENT_SECRET environment variable so that subsequent
+      glasp commands use these credentials instead of the built-in defaults.
+      Must be provided together with client-id.
     required: false
     default: ''
 
@@ -79,8 +85,10 @@ runs:
           echo "Error: 'client-secret' is set but 'client-id' is missing. Both must be provided together." >&2
           exit 1
         fi
-        printf 'GLASP_CLIENT_ID=%s\n' "$_INPUT_CLIENT_ID" >> "$GITHUB_ENV"
-        printf 'GLASP_CLIENT_SECRET=%s\n' "$_INPUT_CLIENT_SECRET" >> "$GITHUB_ENV"
+        delim_id="GLASP_CLIENT_ID_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
+        printf 'GLASP_CLIENT_ID<<%s\n%s\n%s\n' "$delim_id" "$_INPUT_CLIENT_ID" "$delim_id" >> "$GITHUB_ENV"
+        delim_secret="GLASP_CLIENT_SECRET_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
+        printf 'GLASP_CLIENT_SECRET<<%s\n%s\n%s\n' "$delim_secret" "$_INPUT_CLIENT_SECRET" "$delim_secret" >> "$GITHUB_ENV"
 
     - name: Export GLASP_DIR
       if: ${{ inputs.working-directory != '' }}
