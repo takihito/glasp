@@ -71,8 +71,16 @@ runs:
         _INPUT_CLIENT_ID: ${{ inputs.client-id }}
         _INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
       run: |
-        if [ -n "$_INPUT_CLIENT_ID" ]; then printf 'GLASP_CLIENT_ID=%s\n' "$_INPUT_CLIENT_ID" >> "$GITHUB_ENV"; fi
-        if [ -n "$_INPUT_CLIENT_SECRET" ]; then printf 'GLASP_CLIENT_SECRET=%s\n' "$_INPUT_CLIENT_SECRET" >> "$GITHUB_ENV"; fi
+        if [ -n "$_INPUT_CLIENT_ID" ] && [ -z "$_INPUT_CLIENT_SECRET" ]; then
+          echo "Error: 'client-id' is set but 'client-secret' is missing. Both must be provided together." >&2
+          exit 1
+        fi
+        if [ -z "$_INPUT_CLIENT_ID" ] && [ -n "$_INPUT_CLIENT_SECRET" ]; then
+          echo "Error: 'client-secret' is set but 'client-id' is missing. Both must be provided together." >&2
+          exit 1
+        fi
+        printf 'GLASP_CLIENT_ID=%s\n' "$_INPUT_CLIENT_ID" >> "$GITHUB_ENV"
+        printf 'GLASP_CLIENT_SECRET=%s\n' "$_INPUT_CLIENT_SECRET" >> "$GITHUB_ENV"
 
     - name: Export GLASP_DIR
       if: ${{ inputs.working-directory != '' }}
