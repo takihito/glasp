@@ -12,9 +12,11 @@ glasp provides a composite action that lets you install glasp and authenticate d
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `version` | No | latest | glasp version to install (e.g. `v1.2.0`). Omit to use the latest release. |
+| `version` | No | latest | glasp version to install (e.g. `v0.2.7`). Omit to use the latest release. |
 | `auth` | No | | JSON content of `.clasprc.json`. Pass a repository secret here. When provided, sets the `GLASP_AUTH` environment variable for subsequent steps. |
 | `working-directory` | No | | Directory containing `.clasp.json`, relative to workspace root. When provided, sets the `GLASP_DIR` environment variable so that all subsequent `glasp` commands run from that directory. |
+| `client-id` | No | | OAuth2 client ID. Pass a repository secret here. When provided, sets the `GLASP_CLIENT_ID` environment variable. Must be set together with `client-secret`. |
+| `client-secret` | No | | OAuth2 client secret. Pass a repository secret here. When provided, sets the `GLASP_CLIENT_SECRET` environment variable. Must be set together with `client-id`. |
 
 ## Setup
 
@@ -57,9 +59,9 @@ Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and ad
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v1.2.0
+  - uses: takihito/glasp@v0.2.7
     with:
-      version: 'v1.2.0'
+      version: 'v0.2.7'
       auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
   - run: glasp push
 ```
@@ -81,9 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v1.2.0
+      - uses: takihito/glasp@v0.2.7
         with:
-          version: 'v1.2.0'
+          version: 'v0.2.7'
           auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
 
       - name: Push to Apps Script
@@ -105,9 +107,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v1.2.0
+      - uses: takihito/glasp@v0.2.7
         with:
-          version: 'v1.2.0'
+          version: 'v0.2.7'
           auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret
 
       - name: Push files
@@ -117,17 +119,20 @@ jobs:
         run: glasp create-deployment --description "Deploy from CI"
 ```
 
-### TypeScript project
+### Project
 
 glasp automatically detects `.ts` files according to your `.clasp.json` settings and transpiles them via esbuild before pushing. No additional configuration is needed:
 
 ```yaml
-- uses: takihito/glasp@v1.2.0
+- uses: takihito/glasp@v0.2.7
   with:
-    version: 'v1.2.0'
+    version: 'v0.2.7'
     auth: ${{ secrets.GLASP_AUTH }}
+    working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
+    client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
+    client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
 
-- name: Push TypeScript project
+- name: Push project
   run: glasp push
 ```
 
@@ -139,16 +144,20 @@ When `auth` is set, the action exports its value as the `GLASP_AUTH` environment
 2. `GLASP_AUTH` environment variable ← set by this action
 3. Project cache (`.glasp/access.json`)
 
+To populate `GLASP_AUTH`, copy the JSON content of `.glasp/access.json` (from `glasp login`) or `~/.clasprc.json` (from `clasp login`) into a repository secret.
+
+When `client-id` and `client-secret` are set, the action also exports `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET`, allowing glasp's OAuth flow to use custom credentials instead of the built-in defaults.
+
 ## Monorepo / subdirectory projects
 
 If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
 
 ```yaml
-- uses: takihito/glasp@v1.2.0
+- uses: takihito/glasp@v0.2.7
   with:
-    version: 'v1.2.0'
+    version: 'v0.2.7'
     auth: ${{ secrets.GLASP_AUTH }}
-    working-directory: 'apps-script'   # contains .clasp.json
+    working-directory: 'apps-script/dir'   # contains .clasp.json
 ```
 
 This sets `GLASP_DIR=<absolute path>` as an environment variable. Every subsequent `glasp` command picks it up automatically — no `--dir` flag or `working-directory:` needed on each step.
@@ -158,10 +167,10 @@ You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environ
 ```yaml
 - run: glasp push
   env:
-    GLASP_DIR: apps-script
+    GLASP_DIR: apps-script/dir
 
 # or equivalently:
-- run: glasp --dir apps-script push
+- run: glasp --dir apps-script/dir push
 ```
 
 ## Version pinning
@@ -169,9 +178,9 @@ You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environ
 Specify an explicit version to make your workflow reproducible:
 
 ```yaml
-- uses: takihito/glasp@v1.2.0   # recommended: pin to a release tag
+- uses: takihito/glasp@v0.2.7   # recommended: pin to a release tag
   with:
-    version: 'v1.2.0'
+    version: 'v0.2.7'
 ```
 
 GitHub Release artifacts are immutable, so pinning `version` guarantees the exact same binary is installed on every run.
@@ -181,5 +190,5 @@ You can also pin the action itself by commit SHA for stricter supply-chain contr
 ```yaml
 - uses: takihito/glasp@1ae5afb   # pin to a specific commit
   with:
-    version: 'v1.2.0'
+    version: 'v0.2.7'
 ```
