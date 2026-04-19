@@ -2,7 +2,9 @@
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/takihito/glasp/badge)](https://scorecard.dev/viewer/?uri=github.com/takihito/glasp)
 
-A Go CLI tool that replaces Node.js-based [clasp](https://github.com/google/clasp) for managing Google Apps Script projects. Single-binary, high-performance alternative with full clasp compatibility.
+A CLI tool for developing, managing, and deploying GAS (Google Apps Script) code locally.
+
+A single-binary alternative that replaces Node.js-based [clasp](https://github.com/google/clasp), with full clasp compatibility.
 
 **Documentation:** [https://takihito.github.io/glasp/](https://takihito.github.io/glasp/)
 

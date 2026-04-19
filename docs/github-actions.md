@@ -22,27 +22,25 @@ glasp provides a composite action that lets you install glasp and authenticate d
 
 ### 1. Obtain your credentials
 
-Log in on your local machine and copy the JSON content of either file:
+To authenticate glasp in GitHub Actions, run `glasp login` or `clasp login` on your local machine. These commands save credentials to `.glasp/access.json` and `~/.clasprc.json` respectively.
 
-**Using glasp:**
+Log in on your local machine:
 
 ```bash
 glasp login
 cat .glasp/access.json
 ```
 
-**Using clasp:**
-
 ```bash
 clasp login
 cat ~/.clasprc.json
 ```
 
-You can also load the content into a shell variable for quick testing:
+You can also load the content into a shell variable and run glasp directly:
 
 ```bash
-GLASP_AUTH=$(cat .glasp/access.json)   # from glasp login
-GLASP_AUTH=$(cat ~/.clasprc.json)      # from clasp login
+export GLASP_AUTH=$(cat .glasp/access.json) && glasp push # from glasp login
+export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push    # from clasp login
 ```
 
 ### 2. Add a repository secret
