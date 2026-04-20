@@ -40,7 +40,6 @@ cat ~/.clasprc.json
 シェル変数に読み込んでCLIを実行することもできます：
 
 ```bash
-export GLASP_AUTH=$(cat .glasp/access.json) && glasp push # glasp login の場合
 export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push # clasp login の場合
 ```
 

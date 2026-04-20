@@ -39,7 +39,6 @@ cat ~/.clasprc.json
 You can also load the content into a shell variable and run glasp directly:
 
 ```bash
-export GLASP_AUTH=$(cat .glasp/access.json) && glasp push # from glasp login
 export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push    # from clasp login
 ```
 
