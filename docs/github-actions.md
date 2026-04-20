@@ -44,11 +44,11 @@ export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push    # from clasp login
 
 ### 2. Add a repository secret
 
-Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `GLASP_AUTH`:
+Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `CLASPRC_JSON`:
 
 **GitHub → Repository → Settings → Secrets and variables → Actions → New repository secret**
 
-- Name: `GLASP_AUTH`
+- Name: `CLASPRC_JSON`
 - Value: *(paste the JSON content)*
 
 ### 3. Add the action to your workflow
@@ -56,10 +56,10 @@ Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and ad
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v0.2.7
+  - uses: takihito/glasp@v0.2.8
     with:
-      version: 'v0.2.7'
-      auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
+      version: 'v0.2.8'
+      auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
   - run: glasp push
 ```
 
@@ -80,10 +80,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.2.7
+      - uses: takihito/glasp@v0.2.8
         with:
-          version: 'v0.2.7'
-          auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret to glasp
+          version: 'v0.2.8'
+          auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
 
       - name: Push to Apps Script
         run: glasp push
@@ -104,10 +104,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.2.7
+      - uses: takihito/glasp@v0.2.8
         with:
-          version: 'v0.2.7'
-          auth: ${{ secrets.GLASP_AUTH }}  # pass the registered secret
+          version: 'v0.2.8'
+          auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
 
       - name: Push files
         run: glasp push
@@ -121,10 +121,10 @@ jobs:
 glasp automatically detects `.ts` files according to your `.clasp.json` settings and transpiles them via esbuild before pushing. No additional configuration is needed:
 
 ```yaml
-- uses: takihito/glasp@v0.2.7
+- uses: takihito/glasp@v0.2.8
   with:
-    version: 'v0.2.7'
-    auth: ${{ secrets.GLASP_AUTH }}
+    version: 'v0.2.8'
+    auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
@@ -138,7 +138,7 @@ glasp automatically detects `.ts` files according to your `.clasp.json` settings
 When `auth` is set, the action exports its value as the `GLASP_AUTH` environment variable. glasp reads this variable and uses the JSON content directly as credentials — no file on disk, no `glasp login` step required. Auth source priority inside glasp:
 
 1. `--auth <path>` flag
-2. `GLASP_AUTH` environment variable ← set by this action
+2. `GLASP_AUTH` environment variable ← set by this GitHub Action
 3. Project cache (`.glasp/access.json`)
 
 To populate `GLASP_AUTH`, copy the JSON content of `.glasp/access.json` (from `glasp login`) or `~/.clasprc.json` (from `clasp login`) into a repository secret.
@@ -150,10 +150,10 @@ When `client-id` and `client-secret` are set, the action also exports `GLASP_CLI
 If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
 
 ```yaml
-- uses: takihito/glasp@v0.2.7
+- uses: takihito/glasp@v0.2.8
   with:
-    version: 'v0.2.7'
-    auth: ${{ secrets.GLASP_AUTH }}
+    version: 'v0.2.8'
+    auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir'   # contains .clasp.json
 ```
 
@@ -187,5 +187,5 @@ You can also pin the action itself by commit SHA for stricter supply-chain contr
 ```yaml
 - uses: takihito/glasp@1ae5afb   # pin to a specific commit
   with:
-    version: 'v0.2.7'
+    version: 'v0.2.8'
 ```
