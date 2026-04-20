@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.8](https://github.com/takihito/glasp/compare/v0.2.7...v0.2.8) - 2026-04-20
+- feat: add client-id and client-secret inputs to action.yml by @takihito in https://github.com/takihito/glasp/pull/50
+- docs: sync EN docs with updated JA docs and README.ja.md by @takihito in https://github.com/takihito/glasp/pull/52
+
 ## [v0.2.7](https://github.com/takihito/glasp/compare/v0.2.6...v0.2.7) - 2026-04-16
 - Bump google.golang.org/api from 0.274.0 to 0.275.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/40
 - Bump Songmu/tagpr from 1.17.1 to 1.18.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/41
