@@ -47,7 +47,7 @@ curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/l
 
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex`
 
-See [Installation](installation) and [Usage](usage) for details.
+See [Installation](installation), [Usage](usage), and [GitHub Actions](github-actions) for details.
 
 ## Supply-Chain Security
 
