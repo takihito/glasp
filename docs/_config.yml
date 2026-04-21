@@ -21,3 +21,11 @@ nav:
     url: /glasp/ja/
   - title: GitHub
     url: https://github.com/takihito/glasp
+
+defaults:
+  # apply the default layout to all markdown pages
+  - scope:
+      path: "*"
+    values:
+      layout: default
+      render_with_liquid: false
