@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.9](https://github.com/takihito/glasp/compare/v0.2.8...v0.2.9) - 2026-04-21
+- update README, docs/github-actions.md by @takihito in https://github.com/takihito/glasp/pull/53
+- docs _config.yml render_with_liquid: false by @takihito in https://github.com/takihito/glasp/pull/60
+- build(deps): bump google.golang.org/api from 0.275.0 to 0.276.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/56
+- build(deps): bump github/codeql-action from 4.35.1 to 4.35.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/55
+- build(deps): bump step-security/harden-runner from 2.17.0 to 2.19.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/57
+- added raw tag. change remote_theme by @takihito in https://github.com/takihito/glasp/pull/61
+- build(deps): bump goreleaser/goreleaser-action from 7.0.0 to 7.1.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/58
+- build(deps): bump Songmu/tagpr from 1.18.2 to 1.18.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/59
+
 ## [v0.2.8](https://github.com/takihito/glasp/compare/v0.2.7...v0.2.8) - 2026-04-20
 - feat: add client-id and client-secret inputs to action.yml by @takihito in https://github.com/takihito/glasp/pull/50
 - docs: sync EN docs with updated JA docs and README.ja.md by @takihito in https://github.com/takihito/glasp/pull/52
