@@ -59,7 +59,9 @@ steps:
   - uses: takihito/glasp@v0.2.8
     with:
       version: 'v0.2.8'
+{% raw %}
       auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
+{% endraw %}
   - run: glasp push
 ```
 
@@ -83,7 +85,9 @@ jobs:
       - uses: takihito/glasp@v0.2.8
         with:
           version: 'v0.2.8'
+{% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
+{% endraw %}
 
       - name: Push to Apps Script
         run: glasp push
@@ -107,7 +111,9 @@ jobs:
       - uses: takihito/glasp@v0.2.8
         with:
           version: 'v0.2.8'
+{% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
+{% endraw %}
 
       - name: Push files
         run: glasp push
@@ -124,10 +130,12 @@ glasp automatically detects `.ts` files according to your `.clasp.json` settings
 - uses: takihito/glasp@v0.2.8
   with:
     version: 'v0.2.8'
+{% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
+{% endraw %}
 
 - name: Push project
   run: glasp push
@@ -153,7 +161,9 @@ If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `workin
 - uses: takihito/glasp@v0.2.8
   with:
     version: 'v0.2.8'
+{% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
+{% endraw %}
     working-directory: 'apps-script/dir'   # contains .clasp.json
 ```
 
