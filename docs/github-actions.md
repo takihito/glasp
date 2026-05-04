@@ -19,7 +19,7 @@ Because glasp is a single precompiled Go binary, setup in GitHub Actions is dram
 | Pull Time (avg) | 359ms | 1270ms | **3.5x** |
 | **Total Time** | **2711ms** | **21649ms** | **7.9x** |
 
-The biggest win is setup: clasp requires downloading and installing Node.js plus the npm package on every run (~19 seconds), whereas glasp fetches a single binary (~1.3 seconds). End-to-end, glasp completes the full setup → push → pull cycle **7.9× faster**, which adds up quickly in high-frequency deployment pipelines.
+The biggest win is setup: clasp requires installing the `@google/clasp` npm package globally on every run (~19 seconds), whereas glasp fetches a single precompiled binary (~1.3 seconds). End-to-end, glasp completes the full setup → push → pull cycle **7.9× faster**, which adds up quickly in high-frequency deployment pipelines.
 
 ## Action inputs
 
