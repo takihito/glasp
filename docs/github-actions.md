@@ -8,6 +8,19 @@ description: Using glasp in GitHub Actions workflows to automate Google Apps Scr
 
 glasp provides a composite action that lets you install glasp and authenticate directly inside a GitHub Actions workflow — no manual binary download or login steps required.
 
+## Performance: glasp vs clasp in CI
+
+Because glasp is a single precompiled Go binary, setup in GitHub Actions is dramatically faster than installing clasp via npm. The table below shows benchmark results measured on `ubuntu-latest` (glasp v0.2.9 / @google/clasp 3.3.0, push/pull averaged over 5 runs):
+
+| Metric | glasp | clasp | glasp Speed Advantage |
+|:-------|------:|------:|:---------------------:|
+| Setup Time | 1337ms | 19150ms | **14.3x** |
+| Push Time (avg) | 1015ms | 1229ms | **1.2x** |
+| Pull Time (avg) | 359ms | 1270ms | **3.5x** |
+| **Total Time** | **2711ms** | **21649ms** | **7.9x** |
+
+The biggest win is setup: clasp requires installing the `@google/clasp` npm package globally on every run (~19 seconds), whereas glasp fetches a single precompiled binary (~1.3 seconds). End-to-end, glasp completes the full setup → push → pull cycle **7.9× faster**, which adds up quickly in high-frequency deployment pipelines.
+
 ## Action inputs
 
 | Input | Required | Default | Description |
@@ -56,9 +69,9 @@ Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and ad
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v0.2.8
+  - uses: takihito/glasp@v0.2.9
     with:
-      version: 'v0.2.8'
+      version: 'v0.2.9'
 {% raw %}
       auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
 {% endraw %}
@@ -82,9 +95,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.2.8
+      - uses: takihito/glasp@v0.2.9
         with:
-          version: 'v0.2.8'
+          version: 'v0.2.9'
 {% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
 {% endraw %}
@@ -108,9 +121,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.2.8
+      - uses: takihito/glasp@v0.2.9
         with:
-          version: 'v0.2.8'
+          version: 'v0.2.9'
 {% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
 {% endraw %}
@@ -127,9 +140,9 @@ jobs:
 glasp automatically detects `.ts` files according to your `.clasp.json` settings and transpiles them via esbuild before pushing. No additional configuration is needed:
 
 ```yaml
-- uses: takihito/glasp@v0.2.8
+- uses: takihito/glasp@v0.2.9
   with:
-    version: 'v0.2.8'
+    version: 'v0.2.9'
 {% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
@@ -158,9 +171,9 @@ When `client-id` and `client-secret` are set, the action also exports `GLASP_CLI
 If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
 
 ```yaml
-- uses: takihito/glasp@v0.2.8
+- uses: takihito/glasp@v0.2.9
   with:
-    version: 'v0.2.8'
+    version: 'v0.2.9'
 {% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
 {% endraw %}
@@ -185,9 +198,9 @@ You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environ
 Specify an explicit version to make your workflow reproducible:
 
 ```yaml
-- uses: takihito/glasp@v0.2.7   # recommended: pin to a release tag
+- uses: takihito/glasp@v0.2.9   # recommended: pin to a release tag
   with:
-    version: 'v0.2.7'
+    version: 'v0.2.9'
 ```
 
 GitHub Release artifacts are immutable, so pinning `version` guarantees the exact same binary is installed on every run.
@@ -195,7 +208,7 @@ GitHub Release artifacts are immutable, so pinning `version` guarantees the exac
 You can also pin the action itself by commit SHA for stricter supply-chain control:
 
 ```yaml
-- uses: takihito/glasp@1ae5afb   # pin to a specific commit
+- uses: takihito/glasp@75089df   # pin to a specific commit
   with:
-    version: 'v0.2.8'
+    version: 'v0.2.9'
 ```
