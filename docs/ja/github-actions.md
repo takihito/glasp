@@ -8,11 +8,11 @@ description: GitHub Actions ワークフローで glasp を使って Google Apps
 
 glasp は Composite Action を提供しており、GitHub Actions ワークフローの中で glasp のインストールと認証をまとめて行えます。バイナリの手動ダウンロードや `glasp login` の実行は不要です。
 
-## パフォーマンス: glasp vs clasp in CI
+## パフォーマンス比較: glasp と clasp
 
 glasp はシングルバイナリの Go 製ツールであるため、GitHub Actions でのセットアップ時間が npm 経由で clasp をインストールする場合と比べて大幅に短縮されます。以下は `ubuntu-latest` 上で計測したベンチマーク結果です（glasp v0.2.9 / @google/clasp 3.3.0、push/pull は 5 回平均）。
 
-| 指標 | glasp | clasp | glasp の速度優位 |
+| 指標 | glasp | clasp | 速度比（glasp / clasp）|
 |:----|------:|------:|:--------------:|
 | セットアップ時間 | 1337ms | 19150ms | **14.3x** |
 | Push 時間（平均） | 1015ms | 1229ms | **1.2x** |
