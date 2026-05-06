@@ -8,11 +8,11 @@ description: Using glasp in GitHub Actions workflows to automate Google Apps Scr
 
 glasp provides a composite action that lets you install glasp and authenticate directly inside a GitHub Actions workflow — no manual binary download or login steps required.
 
-## Performance: glasp vs clasp in CI
+## Performance comparison: glasp and clasp in CI
 
 Because glasp is a single precompiled Go binary, setup in GitHub Actions is dramatically faster than installing clasp via npm. The table below shows benchmark results measured on `ubuntu-latest` (glasp v0.2.9 / @google/clasp 3.3.0, push/pull averaged over 5 runs):
 
-| Metric | glasp | clasp | glasp Speed Advantage |
+| Metric | glasp | clasp | Ratio (glasp / clasp) |
 |:-------|------:|------:|:---------------------:|
 | Setup Time | 1337ms | 19150ms | **14.3x** |
 | Push Time (avg) | 1015ms | 1229ms | **1.2x** |
