@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.10](https://github.com/takihito/glasp/compare/v0.2.9...v0.2.10) - 2026-05-17
+- build(deps): bump goreleaser/goreleaser-action from 7.1.0 to 7.2.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/62
+- docs: add glasp vs clasp CI benchmark results to GitHub Actions docs by @takihito in https://github.com/takihito/glasp/pull/64
+- docs: use comparison framing in CI benchmark section by @takihito in https://github.com/takihito/glasp/pull/68
+- build(deps): bump github/codeql-action from 4.35.2 to 4.35.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/65
+- build(deps): bump google.golang.org/api from 0.276.0 to 0.277.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/66
+- build(deps): bump step-security/harden-runner from 2.19.0 to 2.19.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/67
+- add pin to documents by @takihito in https://github.com/takihito/glasp/pull/69
+- build(deps): bump google.golang.org/api from 0.277.0 to 0.278.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/70
+- build(deps): bump golang.org/x/sys from 0.43.0 to 0.44.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/71
+- build(deps): bump github/codeql-action from 4.35.3 to 4.35.4 by @dependabot[bot] in https://github.com/takihito/glasp/pull/72
+- build(deps): bump Songmu/tagpr from 1.18.3 to 1.19.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/74
+- build(deps): bump actions/dependency-review-action from 4.9.0 to 5.0.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/73
+
 ## [v0.2.9](https://github.com/takihito/glasp/compare/v0.2.8...v0.2.9) - 2026-04-21
 - update README, docs/github-actions.md by @takihito in https://github.com/takihito/glasp/pull/53
 - docs _config.yml render_with_liquid: false by @takihito in https://github.com/takihito/glasp/pull/60
