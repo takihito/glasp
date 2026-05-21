@@ -1,6 +1,6 @@
 # Build artifacts
+dist/
 bin/
-/glasp
 
 # Environment / secrets
 .env
@@ -18,3 +18,6 @@ issues/
 
 # OS files
 .DS_Store
+
+# claude
+.claude
