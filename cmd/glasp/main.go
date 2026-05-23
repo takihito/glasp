@@ -87,6 +87,7 @@ type CLI struct {
 // LoginCmd represents the 'login' subcommand.
 type LoginCmd struct {
 	Auth string `help:"Path to .clasprc.json to import as login credentials."`
+	PKCE bool   `name:"pkce" env:"GLASP_USE_PKCE" help:"Enable PKCE (Proof Key for Code Exchange) for the OAuth login flow."`
 }
 
 // Run executes the login command.
@@ -118,7 +119,7 @@ func (c *LoginCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
-	_, err = auth.Login(context.Background(), oauthConfig)
+	_, err = auth.LoginWithOptions(context.Background(), oauthConfig, auth.LoginOptions{PKCE: c.PKCE})
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
