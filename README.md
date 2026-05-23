@@ -217,6 +217,22 @@ Auth tokens are stored at `.glasp/access.json` with `0600` permissions. Auth sou
 2. Project cache (`.glasp/access.json`)
 3. Interactive login flow
 
+### PKCE (Proof Key for Code Exchange)
+
+The interactive login flow optionally supports PKCE (RFC 7636) to harden the OAuth2 authorization code exchange against code interception attacks. PKCE is opt-in:
+
+```bash
+# Enable via CLI flag
+glasp login --pkce
+
+# Or enable via environment variable
+GLASP_USE_PKCE=1 glasp login
+```
+
+glasp generates a cryptographic `code_verifier` per login, sends an `S256` `code_challenge` to Google, and provides the verifier at token exchange. The verifier itself is never logged or persisted. PKCE coexists with `client_secret`; existing credentials continue to work.
+
+PKCE applies only to the interactive `glasp login` flow.
+
 ### Using `--auth` with `.clasprc.json`
 
 If you already use clasp, you likely have a `~/.clasprc.json` file containing your OAuth credentials. The `--auth` option lets you reuse this file directly with glasp — **no need to go through the interactive login flow**.
@@ -313,6 +329,16 @@ If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `
 ```
 
 See the [GitHub Actions documentation](https://takihito.github.io/glasp/github-actions) for full examples including deployments and TypeScript projects.
+
+## Environment Variables
+
+| Variable | Equivalent flag | Description |
+| --- | --- | --- |
+| `GLASP_DIR` | `-C`, `--dir` | Change to this directory before executing any command. |
+| `GLASP_USE_PKCE` | `--pkce` (on `login`) | Enable PKCE for the interactive OAuth login flow. Accepts `1`, `true`, etc. (parsed by kong). |
+| `GLASP_AUTH` | `--auth` | Raw `.clasprc.json` content. Used by CI workflows where mounting a file is inconvenient. |
+| `GLASP_CLIENT_ID` | — | OAuth client ID. Overrides the value baked in at build time via `-ldflags`. |
+| `GLASP_CLIENT_SECRET` | — | OAuth client secret. Overrides the value baked in at build time via `-ldflags`. |
 
 ## Development
 

@@ -29,7 +29,7 @@ All CLI commands are defined in `cmd/glasp/main.go` as a single struct parsed by
 
 ### Internal Packages
 
-- **auth** — OAuth2 flow with local HTTP callback server; tokens stored at `.glasp/access.json` (0600 perms). Auth source priority: `--auth` flag → project cache → login flow. Supports `.clasprc.json` for clasp compatibility.
+- **auth** — OAuth2 flow with local HTTP callback server; tokens stored at `.glasp/access.json` (0600 perms). Auth source priority: `--auth` flag → project cache → login flow. Supports `.clasprc.json` for clasp compatibility. Interactive login optionally uses PKCE (S256) when `--pkce` or `GLASP_USE_PKCE` is set; `code_verifier` is never logged or persisted.
 - **config** — Reads `.clasp.json` (clasp compat) and `.glasp/config.json` (glasp-specific archive settings). Parses `.claspignore` using go-gitignore. Default ignores: `.glasp/`, `node_modules/`. `EnsureGlaspDir` creates `.glasp/` (0700 perms) and auto-adds `.glasp/` to `.claspignore`.
 - **scriptapi** — Thin wrapper around Google Apps Script API v1.
 - **syncer** — Collects local files (respecting .claspignore), builds API content payloads, and applies remote content to local disk. Default file extensions include `.js`, `.gs`, `.ts`, `.html`. `.d.ts` files and the `.glasp/` directory are always excluded from collection.
@@ -53,4 +53,5 @@ Archives live under `.glasp/archive/<scriptId>/<push|pull>/<timestamp>/` with `m
 - Must maintain compatibility with clasp's `.clasp.json`, `.claspignore`, and file path conversion logic
 - Errors must be wrapped with context (Go idiomatic check-and-return)
 - OAuth credentials (`GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`) injected at build time via `-ldflags` from `.env`
+- Environment variables tied to CLI flags use kong's `env:` tag (`GLASP_DIR` → `--dir`, `GLASP_USE_PKCE` → `--pkce`); env vars without a 1:1 flag (`GLASP_AUTH`, `GLASP_CLIENT_ID`, `GLASP_CLIENT_SECRET`) are read via `os.Getenv` because they participate in fallback chains
 - Detailed AI development guidelines in `AGENTS.md` and `docs/ai/static/`
