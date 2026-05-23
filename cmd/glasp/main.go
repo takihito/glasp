@@ -87,7 +87,7 @@ type CLI struct {
 // LoginCmd represents the 'login' subcommand.
 type LoginCmd struct {
 	Auth string `help:"Path to .clasprc.json to import as login credentials."`
-	PKCE bool   `name:"pkce" env:"GLASP_USE_PKCE" help:"Enable PKCE (Proof Key for Code Exchange) for the OAuth login flow."`
+	PKCE bool   `name:"pkce" env:"GLASP_USE_PKCE" help:"Enable PKCE (Proof Key for Code Exchange) for the interactive OAuth login flow."`
 }
 
 // Run executes the login command.
