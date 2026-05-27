@@ -314,6 +314,41 @@ If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `
 
 See the [GitHub Actions documentation](https://takihito.github.io/glasp/github-actions) for full examples including deployments and TypeScript projects.
 
+### Hardening egress with step-security/harden-runner
+
+When running glasp inside a workflow, pair it with [`step-security/harden-runner`](https://github.com/step-security/harden-runner) in `block` mode to restrict outbound traffic to only the endpoints glasp actually needs:
+
+```yaml
+steps:
+  - name: Harden the runner
+    uses: step-security/harden-runner@v2
+    with:
+      egress-policy: block
+      allowed-endpoints: >
+        api.github.com:443
+        github.com:443
+        objects.githubusercontent.com:443
+        script.googleapis.com:443
+        www.googleapis.com:443
+        oauth2.googleapis.com:443
+
+  - uses: actions/checkout@v4
+  - uses: takihito/glasp@v0.2.10
+    with:
+      auth: ${{ secrets.GLASP_AUTH }}
+  - run: glasp push
+```
+
+Endpoint reference:
+
+| Endpoint | Why glasp needs it |
+| --- | --- |
+| `api.github.com:443` | The action installer queries the latest release metadata. |
+| `github.com:443`, `objects.githubusercontent.com:443` | Downloading the released `glasp` binary. |
+| `script.googleapis.com:443` | Apps Script API (`push`, `pull`, deployments, `run-function`). |
+| `www.googleapis.com:443` | Drive scope used during project creation/clone. |
+| `oauth2.googleapis.com:443` | Refreshing the OAuth access token. |
+
 ## Development
 
 ```bash
