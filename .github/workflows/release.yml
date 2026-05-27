@@ -34,6 +34,7 @@ jobs:
             sum.golang.org:443
             tuf-repo-cdn.sigstore.dev:443
             uploads.github.com:443
+            timestamp.sigstore.dev:443
 
       - name: Verify OAuth secrets are configured
         run: |
