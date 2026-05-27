@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.12](https://github.com/takihito/glasp/compare/v0.2.11...v0.2.12) - 2026-05-27
+- add alllow endpoint .github/workflows/release.yml by @takihito in https://github.com/takihito/glasp/pull/91
+
 ## [v0.2.11](https://github.com/takihito/glasp/compare/v0.2.10...v0.2.11) - 2026-05-27
 - update documents. v0.2.9 -> v0.2.10 by @takihito in https://github.com/takihito/glasp/pull/79
 - build(deps): bump google.golang.org/api from 0.279.0 to 0.280.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/83
