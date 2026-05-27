@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.11](https://github.com/takihito/glasp/compare/v0.2.10...v0.2.11) - 2026-05-27
+- update documents. v0.2.9 -> v0.2.10 by @takihito in https://github.com/takihito/glasp/pull/79
+- build(deps): bump google.golang.org/api from 0.279.0 to 0.280.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/83
+- build(deps): bump step-security/harden-runner from 2.19.3 to 2.19.4 by @dependabot[bot] in https://github.com/takihito/glasp/pull/84
+- build(deps): bump goreleaser/goreleaser-action from 7.2.1 to 7.2.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/86
+- build(deps): bump golang.org/x/sys from 0.44.0 to 0.45.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/85
+- build(deps): bump github/codeql-action from 4.35.5 to 4.36.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/87
+- deps: bump golang.org/x/crypto to v0.52.0 by @takihito in https://github.com/takihito/glasp/pull/88
+- deps: bump golang.org/x/net to v0.55.0 by @takihito in https://github.com/takihito/glasp/pull/89
+- Harden CI workflows: switch harden-runner to block mode by @takihito in https://github.com/takihito/glasp/pull/82
+- add allowed endpoints. tagpr.yml by @takihito in https://github.com/takihito/glasp/pull/90
+
 ## [v0.2.10](https://github.com/takihito/glasp/compare/v0.2.9...v0.2.10) - 2026-05-19
 - build(deps): bump goreleaser/goreleaser-action from 7.1.0 to 7.2.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/62
 - docs: add glasp vs clasp CI benchmark results to GitHub Actions docs by @takihito in https://github.com/takihito/glasp/pull/64
