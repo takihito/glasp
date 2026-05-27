@@ -32,6 +32,7 @@ jobs:
             rekor.sigstore.dev:443
             storage.googleapis.com:443
             sum.golang.org:443
+            timestamp.sigstore.dev:443
             tuf-repo-cdn.sigstore.dev:443
             uploads.github.com:443
             timestamp.sigstore.dev:443
