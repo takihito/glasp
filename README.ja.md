@@ -217,6 +217,22 @@ glasp convert --ts-to-gas src/main.ts  # 特定のファイルを変換
 2. プロジェクトキャッシュ（`.glasp/access.json`）
 3. 対話型ログインフロー
 
+### PKCE（Proof Key for Code Exchange）
+
+対話型ログインフローは PKCE（RFC 7636）を任意で有効化できます。OAuth2 認可コード横取り攻撃への対策となります。デフォルトは無効、オプトインで有効化します：
+
+```bash
+# CLI フラグで有効化
+glasp login --pkce
+
+# 環境変数で有効化
+GLASP_USE_PKCE=1 glasp login
+```
+
+glasp はログイン毎に `code_verifier` を生成し、Google に `S256` `code_challenge` を送信、トークン交換時に verifier を提示します。verifier 自体はログや保存先に出力されません。`client_secret` との併用は可能で、既存の認証情報はそのまま動作します。
+
+PKCE が適用されるのは対話型 `glasp login` フローのみです。
+
 ### `--auth` で `.clasprc.json` を利用する
 
 すでに clasp を使っている場合、`~/.clasprc.json` に OAuth 認証情報が保存されています。`--auth` オプションを使えば、このファイルを glasp でそのまま再利用できます。**対話型ログインフローは不要です。**
@@ -348,6 +364,16 @@ steps:
 | `script.googleapis.com:443` | Apps Script API（`push`、`pull`、デプロイメント、`run-function`） |
 | `www.googleapis.com:443` | プロジェクト作成・clone 時の Drive スコープ |
 | `oauth2.googleapis.com:443` | OAuth アクセストークンのリフレッシュ |
+
+## 環境変数
+
+| 環境変数 | 対応フラグ | 説明 |
+| --- | --- | --- |
+| `GLASP_DIR` | `-C`, `--dir` | コマンド実行前に指定ディレクトリへ移動します。 |
+| `GLASP_USE_PKCE` | `--pkce`（`login` 時） | 対話型 OAuth ログインで PKCE を有効化します。`1` / `true` 等を受理（kong が解析）。 |
+| `GLASP_AUTH` | `--auth` | `.clasprc.json` の JSON 文字列をそのまま渡します。ファイルマウントが面倒な CI 環境向け。 |
+| `GLASP_CLIENT_ID` | — | OAuth クライアント ID。ビルド時に `-ldflags` で埋め込まれた値を上書きします。 |
+| `GLASP_CLIENT_SECRET` | — | OAuth クライアントシークレット。ビルド時の埋め込み値を上書きします。 |
 
 ## 開発
 

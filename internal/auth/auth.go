@@ -526,13 +526,24 @@ func (s *oauthState) validate(incoming string) error {
 	return nil
 }
 
+// LoginOptions configures optional behavior of the interactive login flow.
+type LoginOptions struct {
+	// PKCE enables PKCE (Proof Key for Code Exchange) for the OAuth code exchange.
+	PKCE bool
+}
+
 // Login performs the OAuth2 login flow using the project-local token cache.
 func Login(ctx context.Context, config *oauth2.Config) (*http.Client, error) {
+	return LoginWithOptions(ctx, config, LoginOptions{})
+}
+
+// LoginWithOptions performs the OAuth2 login flow with explicit options.
+func LoginWithOptions(ctx context.Context, config *oauth2.Config, opts LoginOptions) (*http.Client, error) {
 	cacheFile, err := tokenCacheFile()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token cache file path: %w", err)
 	}
-	return loginWithCachePath(ctx, config, cacheFile)
+	return loginWithCachePath(ctx, config, cacheFile, opts.PKCE)
 }
 
 // LoginWithCachePath performs the OAuth2 login flow using an explicit cache file path.
@@ -540,10 +551,10 @@ func LoginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 	if strings.TrimSpace(cacheFile) == "" {
 		return nil, fmt.Errorf("token cache file path is required")
 	}
-	return loginWithCachePath(ctx, config, cacheFile)
+	return loginWithCachePath(ctx, config, cacheFile, false)
 }
 
-func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile string) (*http.Client, error) {
+func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile string, pkce bool) (*http.Client, error) {
 	var client *http.Client // Declare client here to be in scope for final return
 
 	// Try to load token from cache
@@ -590,7 +601,14 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 		return nil, err
 	}
 	state := &oauthState{token: stateToken}
-	authCodeURL := config.AuthCodeURL(stateToken, oauth2.AccessTypeOffline)
+	var pkceVerifier string
+	authCodeOpts := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
+	if pkce {
+		pkceVerifier = oauth2.GenerateVerifier()
+		authCodeOpts = append(authCodeOpts, oauth2.S256ChallengeOption(pkceVerifier))
+		fmt.Println("PKCE enabled: requesting authorization with S256 code challenge")
+	}
+	authCodeURL := config.AuthCodeURL(stateToken, authCodeOpts...)
 	fmt.Printf("Go to the following link in your browser:\n%s\n", authCodeURL)
 	openBrowserFn(authCodeURL)
 
@@ -668,7 +686,12 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 	}
 
 	// Exchange the code for a token
-	token, err = config.Exchange(ctx, result.code)
+	var exchangeOpts []oauth2.AuthCodeOption
+	if pkceVerifier != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(pkceVerifier))
+		fmt.Println("PKCE: exchanging authorization code with code_verifier")
+	}
+	token, err = config.Exchange(ctx, result.code, exchangeOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange authorization code: %w", err)
 	}

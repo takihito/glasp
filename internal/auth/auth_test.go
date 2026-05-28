@@ -193,7 +193,7 @@ func TestLoginWithCachePathInvalidState(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := loginWithCachePath(context.Background(), cfg, cacheFile)
+		_, err := loginWithCachePath(context.Background(), cfg, cacheFile, false)
 		errCh <- err
 	}()
 
@@ -236,7 +236,7 @@ func TestLoginWithCachePathCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	if _, err := loginWithCachePath(ctx, cfg, cacheFile); err == nil || !strings.Contains(err.Error(), "authentication cancelled") {
+	if _, err := loginWithCachePath(ctx, cfg, cacheFile, false); err == nil || !strings.Contains(err.Error(), "authentication cancelled") {
 		t.Fatalf("expected authentication cancelled error, got %v", err)
 	}
 }
@@ -861,5 +861,89 @@ func TestClientFromAuthFileFallsBackToEmbeddedCredentials(t *testing.T) {
 	_ = resp.Body.Close()
 	if authHeader != "Bearer refreshed-tok" {
 		t.Fatalf("expected refreshed bearer token, got %q", authHeader)
+	}
+}
+
+func TestLoginWithCachePathPKCEEnabled(t *testing.T) {
+	cfg := &oauth2.Config{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "http://example/auth",
+			TokenURL: "http://example/token",
+		},
+	}
+	cacheFile := filepath.Join(t.TempDir(), "token.json")
+
+	authURLCh := make(chan string, 1)
+	origOpenBrowser := openBrowserFn
+	t.Cleanup(func() { openBrowserFn = origOpenBrowser })
+	openBrowserFn = func(u string) { authURLCh <- u }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := loginWithCachePath(ctx, cfg, cacheFile, true)
+		errCh <- err
+	}()
+
+	authURL := <-authURLCh
+	cancel()
+	<-errCh
+
+	parsed, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatalf("failed to parse auth URL: %v", err)
+	}
+	q := parsed.Query()
+	if got := q.Get("code_challenge_method"); got != "S256" {
+		t.Fatalf("code_challenge_method=%q, want S256", got)
+	}
+	if strings.TrimSpace(q.Get("code_challenge")) == "" {
+		t.Fatalf("expected code_challenge query parameter")
+	}
+}
+
+func TestLoginWithCachePathPKCEDisabled(t *testing.T) {
+	cfg := &oauth2.Config{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "http://example/auth",
+			TokenURL: "http://example/token",
+		},
+	}
+	cacheFile := filepath.Join(t.TempDir(), "token.json")
+
+	authURLCh := make(chan string, 1)
+	origOpenBrowser := openBrowserFn
+	t.Cleanup(func() { openBrowserFn = origOpenBrowser })
+	openBrowserFn = func(u string) { authURLCh <- u }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := loginWithCachePath(ctx, cfg, cacheFile, false)
+		errCh <- err
+	}()
+
+	authURL := <-authURLCh
+	cancel()
+	<-errCh
+
+	parsed, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatalf("failed to parse auth URL: %v", err)
+	}
+	q := parsed.Query()
+	if v := q.Get("code_challenge"); v != "" {
+		t.Fatalf("expected no code_challenge, got %q", v)
+	}
+	if v := q.Get("code_challenge_method"); v != "" {
+		t.Fatalf("expected no code_challenge_method, got %q", v)
 	}
 }
