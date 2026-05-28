@@ -3,7 +3,8 @@ name: glasp smoke test
 on:
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 concurrency:
   group: glasp-smoke
@@ -27,6 +28,20 @@ jobs:
             script.googleapis.com:443
             www.googleapis.com:443
             oauth2.googleapis.com:443
+
+      - name: Verify required secrets are configured
+        env:
+          _AUTH: ${{ secrets.GLASP_AUTH }}
+          _SCRIPT_ID: ${{ secrets.GLASP_SMOKE_SCRIPT_ID }}
+        run: |
+          if [ -z "$_AUTH" ]; then
+            echo "::error::GLASP_AUTH must be set as a repository secret."
+            exit 1
+          fi
+          if [ -z "$_SCRIPT_ID" ]; then
+            echo "::error::GLASP_SMOKE_SCRIPT_ID must be set as a repository secret."
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
