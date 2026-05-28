@@ -330,6 +330,41 @@ steps:
 
 デプロイメント作成や TypeScript プロジェクトを含む詳細な使用例は [GitHub Actions ドキュメント](https://takihito.github.io/glasp/ja/github-actions) を参照してください。
 
+### step-security/harden-runner で egress を制限する
+
+ワークフローで glasp を実行する際、[`step-security/harden-runner`](https://github.com/step-security/harden-runner) を `block` モードで併用すると、glasp が実際に通信する宛先のみに egress を制限できます：
+
+```yaml
+steps:
+  - name: Harden the runner
+    uses: step-security/harden-runner@v2
+    with:
+      egress-policy: block
+      allowed-endpoints: >
+        api.github.com:443
+        github.com:443
+        objects.githubusercontent.com:443
+        script.googleapis.com:443
+        www.googleapis.com:443
+        oauth2.googleapis.com:443
+
+  - uses: actions/checkout@v4
+  - uses: takihito/glasp@v0.2.10
+    with:
+      auth: ${{ secrets.GLASP_AUTH }}
+  - run: glasp push
+```
+
+エンドポイント一覧：
+
+| Endpoint | 用途 |
+| --- | --- |
+| `api.github.com:443` | アクションインストーラが最新リリース情報を取得 |
+| `github.com:443`, `objects.githubusercontent.com:443` | glasp バイナリのダウンロード |
+| `script.googleapis.com:443` | Apps Script API（`push`、`pull`、デプロイメント、`run-function`） |
+| `www.googleapis.com:443` | プロジェクト作成・clone 時の Drive スコープ |
+| `oauth2.googleapis.com:443` | OAuth アクセストークンのリフレッシュ |
+
 ## 環境変数
 
 | 環境変数 | 対応フラグ | 説明 |
