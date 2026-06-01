@@ -69,7 +69,7 @@ glasp pull --archive    # 取得したファイルをアーカイブ
 
 ### PKCE
 
-OAuth2 認可コードの横取り攻撃を防ぐ PKCE（RFC 7636）をオプトインで有効化できます：
+OAuth2 PKCE（RFC 7636）をオプトインで有効化して、認可コードの横取り攻撃を防ぐことができます：
 
 ```bash
 glasp login --pkce

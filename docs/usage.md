@@ -70,7 +70,7 @@ Auth source priority:
 
 ### PKCE
 
-Enable PKCE (RFC 7636) to harden the OAuth2 authorization code exchange:
+Enable OAuth2 PKCE (RFC 7636) to protect against authorization code interception attacks:
 
 ```bash
 glasp login --pkce
