@@ -68,6 +68,19 @@ Auth source priority:
 2. Project cache (`.glasp/access.json`)
 3. Interactive login flow
 
+### PKCE
+
+Enable PKCE (RFC 7636) to harden the OAuth2 authorization code exchange:
+
+```bash
+glasp login --pkce
+
+# Or via environment variable
+GLASP_USE_PKCE=1 glasp login
+```
+
+PKCE applies only to the interactive `glasp login` flow.
+
 ### Reuse clasp credentials
 
 ```bash
