@@ -67,6 +67,19 @@ glasp pull --archive    # 取得したファイルをアーカイブ
 2. プロジェクトキャッシュ（`.glasp/access.json`）
 3. インタラクティブログイン
 
+### PKCE
+
+OAuth2 PKCE（RFC 7636）をオプトインで有効化して、認可コードの横取り攻撃を防ぐことができます：
+
+```bash
+glasp login --pkce
+
+# または環境変数で有効化
+GLASP_USE_PKCE=1 glasp login
+```
+
+PKCE は `glasp login` フローにのみ適用されます。
+
 ### clasp の認証情報を再利用
 
 ```bash
