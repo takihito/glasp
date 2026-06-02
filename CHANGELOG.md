@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0](https://github.com/takihito/glasp/compare/v0.2.12...v0.3.0) - 2026-06-02
+- bump version to v0.3.0 by @takihito in https://github.com/takihito/glasp/pull/94
+- implement OAuth PKCE by @takihito in https://github.com/takihito/glasp/pull/81
+- add glasp smoke test workflow by @takihito in https://github.com/takihito/glasp/pull/96
+- docs: add PKCE documentation and enable smoke test on push by @takihito in https://github.com/takihito/glasp/pull/97
+
 ## [v0.2.12](https://github.com/takihito/glasp/compare/v0.2.11...v0.2.12) - 2026-05-27
 - add alllow endpoint .github/workflows/release.yml by @takihito in https://github.com/takihito/glasp/pull/91
 
