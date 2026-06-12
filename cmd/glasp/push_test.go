@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alecthomas/kong"
+	"github.com/takihito/glasp/internal/archive"
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/history"
 	"github.com/takihito/glasp/internal/syncer"
@@ -61,7 +62,7 @@ func TestPushCommandArchiveFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read manifest: %v", err)
 	}
-	var manifest archiveManifest
+	var manifest archive.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatalf("failed to unmarshal manifest: %v", err)
 	}
@@ -248,7 +249,7 @@ func TestArchivePushRunWritesFailedManifestOnError(t *testing.T) {
 		},
 	}
 
-	_, err := archivePushRun(root, "script-id", working, payload, "gs", "")
+	_, err := archive.PushRun(root, "script-id", working, payload, "gs", "")
 	if err == nil {
 		t.Fatalf("expected archivePushRun to fail")
 	}
@@ -265,7 +266,7 @@ func TestArchivePushRunWritesFailedManifestOnError(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("expected failed manifest to exist: %v", readErr)
 	}
-	var manifest archiveManifest
+	var manifest archive.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatalf("failed to unmarshal manifest: %v", err)
 	}

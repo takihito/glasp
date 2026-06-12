@@ -1,4 +1,7 @@
-package main
+// Package archive persists push/pull snapshots under
+// .glasp/archive/<scriptId>/<push|pull>/<timestamp>/ and loads push
+// payloads back for replay (push --history-id).
+package archive
 
 import (
 	"encoding/json"
@@ -16,23 +19,27 @@ import (
 	"google.golang.org/api/script/v1"
 )
 
-type archiveManifest struct {
-	ScriptID      string                     `json:"scriptId"`
-	Direction     string                     `json:"direction"`
-	Timestamp     string                     `json:"timestamp"`
-	FileExtension string                     `json:"fileExtension"`
-	Convert       string                     `json:"convert"`
-	Status        string                     `json:"status"`
-	PayloadIndex  []archivePayloadIndexEntry `json:"payloadIndex,omitempty"`
+// Manifest describes one archived push/pull run (manifest.json).
+type Manifest struct {
+	ScriptID      string              `json:"scriptId"`
+	Direction     string              `json:"direction"`
+	Timestamp     string              `json:"timestamp"`
+	FileExtension string              `json:"fileExtension"`
+	Convert       string              `json:"convert"`
+	Status        string              `json:"status"`
+	PayloadIndex  []PayloadIndexEntry `json:"payloadIndex,omitempty"`
 }
 
-type archivePayloadIndexEntry struct {
+// PayloadIndexEntry maps an archived payload file to its remote path and type.
+type PayloadIndexEntry struct {
 	Path       string `json:"path"`
 	RemotePath string `json:"remotePath"`
 	Type       string `json:"type"`
 }
 
-func archivePullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalContent, workingContent *script.Content, fileExtension string, mode transform.Mode) (string, error) {
+// PullRun archives a pull: the canonical remote content and the working
+// (possibly TS-converted) content. It returns the archive root directory.
+func PullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalContent, workingContent *script.Content, fileExtension string, mode transform.Mode) (string, error) {
 	timestamp := time.Now().Format("20060102_150405")
 	if err := config.EnsureGlaspDir(projectRoot); err != nil {
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
@@ -42,15 +49,15 @@ func archivePullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canon
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	manifestPath := filepath.Join(archiveRoot, "manifest.json")
-	manifest := archiveManifest{
+	manifest := Manifest{
 		ScriptID:      scriptID,
 		Direction:     "pull",
 		Timestamp:     timestamp,
 		FileExtension: fileExtension,
-		Convert:       convertLabel(mode),
+		Convert:       mode.Label(),
 		Status:        "failed",
 	}
-	if err := writeArchiveManifest(manifestPath, manifest); err != nil {
+	if err := writeManifest(manifestPath, manifest); err != nil {
 		return "", err
 	}
 
@@ -81,13 +88,15 @@ func archivePullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canon
 	}
 
 	manifest.Status = "success"
-	if err := writeArchiveManifest(manifestPath, manifest); err != nil {
+	if err := writeManifest(manifestPath, manifest); err != nil {
 		return "", err
 	}
 	return archiveRoot, nil
 }
 
-func archivePushRun(projectRoot, scriptID string, workingFiles, payloadFiles []syncer.ProjectFile, fileExtension string, mode transform.Mode) (string, error) {
+// PushRun archives a push: the working files as collected locally and the
+// payload files actually sent to the API. It returns the archive root directory.
+func PushRun(projectRoot, scriptID string, workingFiles, payloadFiles []syncer.ProjectFile, fileExtension string, mode transform.Mode) (string, error) {
 	timestamp := time.Now().Format("20060102_150405")
 	if err := config.EnsureGlaspDir(projectRoot); err != nil {
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
@@ -97,16 +106,16 @@ func archivePushRun(projectRoot, scriptID string, workingFiles, payloadFiles []s
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	manifestPath := filepath.Join(archiveRoot, "manifest.json")
-	manifest := archiveManifest{
+	manifest := Manifest{
 		ScriptID:      scriptID,
 		Direction:     "push",
 		Timestamp:     timestamp,
 		FileExtension: fileExtension,
-		Convert:       convertLabel(mode),
+		Convert:       mode.Label(),
 		Status:        "failed",
-		PayloadIndex:  buildArchivePayloadIndex(payloadFiles),
+		PayloadIndex:  buildPayloadIndex(payloadFiles),
 	}
-	if err := writeArchiveManifest(manifestPath, manifest); err != nil {
+	if err := writeManifest(manifestPath, manifest); err != nil {
 		return "", err
 	}
 
@@ -126,13 +135,13 @@ func archivePushRun(projectRoot, scriptID string, workingFiles, payloadFiles []s
 	}
 
 	manifest.Status = "success"
-	if err := writeArchiveManifest(manifestPath, manifest); err != nil {
+	if err := writeManifest(manifestPath, manifest); err != nil {
 		return "", err
 	}
 	return archiveRoot, nil
 }
 
-func writeArchiveManifest(path string, manifest archiveManifest) error {
+func writeManifest(path string, manifest Manifest) error {
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
@@ -143,37 +152,40 @@ func writeArchiveManifest(path string, manifest archiveManifest) error {
 	return nil
 }
 
-func loadPushArchivePayload(archivePath, rootDir string) (archiveManifest, []syncer.ProjectFile, error) {
+// LoadPushPayload reads a push archive and returns its manifest and the
+// payload files ready to push again. rootDir is the project rootDir used to
+// strip legacy path prefixes when the manifest has no payload index.
+func LoadPushPayload(archivePath, rootDir string) (Manifest, []syncer.ProjectFile, error) {
 	manifestPath := filepath.Join(archivePath, "manifest.json")
 	manifestBytes, err := os.ReadFile(manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return archiveManifest{}, nil, fmt.Errorf("archive manifest not found: %s", manifestPath)
+			return Manifest{}, nil, fmt.Errorf("archive manifest not found: %s", manifestPath)
 		}
-		return archiveManifest{}, nil, fmt.Errorf("failed to read archive manifest: %w", err)
+		return Manifest{}, nil, fmt.Errorf("failed to read archive manifest: %w", err)
 	}
-	var manifest archiveManifest
+	var manifest Manifest
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
-		return archiveManifest{}, nil, fmt.Errorf("failed to parse archive manifest: %w", err)
+		return Manifest{}, nil, fmt.Errorf("failed to parse archive manifest: %w", err)
 	}
 	if strings.TrimSpace(manifest.Direction) != "push" {
-		return archiveManifest{}, nil, fmt.Errorf("archive direction must be push, got %q", manifest.Direction)
+		return Manifest{}, nil, fmt.Errorf("archive direction must be push, got %q", manifest.Direction)
 	}
 	payloadDir := filepath.Join(archivePath, "payload")
 	info, err := os.Stat(payloadDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return archiveManifest{}, nil, fmt.Errorf("archive payload directory not found: %s", payloadDir)
+			return Manifest{}, nil, fmt.Errorf("archive payload directory not found: %s", payloadDir)
 		}
-		return archiveManifest{}, nil, fmt.Errorf("failed to stat archive payload directory: %w", err)
+		return Manifest{}, nil, fmt.Errorf("failed to stat archive payload directory: %w", err)
 	}
 	if !info.IsDir() {
-		return archiveManifest{}, nil, fmt.Errorf("archive payload path is not a directory: %s", payloadDir)
+		return Manifest{}, nil, fmt.Errorf("archive payload path is not a directory: %s", payloadDir)
 	}
 
-	indexByPath := make(map[string]archivePayloadIndexEntry, len(manifest.PayloadIndex))
+	indexByPath := make(map[string]PayloadIndexEntry, len(manifest.PayloadIndex))
 	for _, item := range manifest.PayloadIndex {
-		key := normalizeArchivePayloadPath(item.Path)
+		key := normalizePayloadPath(item.Path)
 		if key == "" {
 			continue
 		}
@@ -192,7 +204,7 @@ func loadPushArchivePayload(archivePath, rootDir string) (archiveManifest, []syn
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		fileType, ok := archivePayloadFileType(rel)
+		fileType, ok := payloadFileType(rel)
 		if !ok {
 			return nil
 		}
@@ -201,12 +213,12 @@ func loadPushArchivePayload(archivePath, rootDir string) (archiveManifest, []syn
 			return err
 		}
 		remotePath := ""
-		if idx, ok := indexByPath[normalizeArchivePayloadPath(rel)]; ok &&
+		if idx, ok := indexByPath[normalizePayloadPath(rel)]; ok &&
 			strings.TrimSpace(idx.RemotePath) != "" &&
 			(strings.TrimSpace(idx.Type) == "" || strings.TrimSpace(idx.Type) == fileType) {
 			remotePath = strings.TrimSpace(idx.RemotePath)
 		} else {
-			remotePath = archivePayloadRemotePath(rel, fileType, rootDir)
+			remotePath = payloadRemotePath(rel, fileType, rootDir)
 		}
 		if strings.TrimSpace(remotePath) == "" {
 			return fmt.Errorf("failed to determine remote path for payload file: %s", rel)
@@ -219,10 +231,10 @@ func loadPushArchivePayload(archivePath, rootDir string) (archiveManifest, []syn
 		})
 		return nil
 	}); err != nil {
-		return archiveManifest{}, nil, fmt.Errorf("failed to read archive payload files: %w", err)
+		return Manifest{}, nil, fmt.Errorf("failed to read archive payload files: %w", err)
 	}
 	if len(files) == 0 {
-		return archiveManifest{}, nil, fmt.Errorf("archive payload has no pushable files: %s", payloadDir)
+		return Manifest{}, nil, fmt.Errorf("archive payload has no pushable files: %s", payloadDir)
 	}
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].LocalPath < files[j].LocalPath
@@ -230,7 +242,7 @@ func loadPushArchivePayload(archivePath, rootDir string) (archiveManifest, []syn
 	return manifest, files, nil
 }
 
-func archivePayloadFileType(relPath string) (string, bool) {
+func payloadFileType(relPath string) (string, bool) {
 	clean := filepath.ToSlash(relPath)
 	lower := strings.ToLower(clean)
 	if filepath.Base(clean) == "appsscript.json" {
@@ -246,8 +258,8 @@ func archivePayloadFileType(relPath string) (string, bool) {
 	}
 }
 
-func archivePayloadRemotePath(relPath, fileType, rootDir string) string {
-	clean := normalizeArchivePayloadPath(relPath)
+func payloadRemotePath(relPath, fileType, rootDir string) string {
+	clean := normalizePayloadPath(relPath)
 	rootPrefix := normalizeRootDirPrefix(rootDir)
 	if rootPrefix != "" {
 		prefix := rootPrefix + "/"
@@ -280,23 +292,23 @@ func normalizeRootDirPrefix(rootDir string) string {
 	return clean
 }
 
-func normalizeArchivePayloadPath(path string) string {
+func normalizePayloadPath(path string) string {
 	clean := filepath.ToSlash(strings.TrimSpace(path))
 	clean = strings.TrimPrefix(clean, "./")
 	clean = strings.TrimPrefix(clean, "/")
 	return clean
 }
 
-func buildArchivePayloadIndex(payloadFiles []syncer.ProjectFile) []archivePayloadIndexEntry {
-	index := make([]archivePayloadIndexEntry, 0, len(payloadFiles))
+func buildPayloadIndex(payloadFiles []syncer.ProjectFile) []PayloadIndexEntry {
+	index := make([]PayloadIndexEntry, 0, len(payloadFiles))
 	for _, file := range payloadFiles {
-		path := normalizeArchivePayloadPath(file.LocalPath)
+		path := normalizePayloadPath(file.LocalPath)
 		remotePath := strings.TrimSpace(file.RemotePath)
 		fileType := strings.TrimSpace(file.Type)
 		if path == "" || remotePath == "" || fileType == "" {
 			continue
 		}
-		index = append(index, archivePayloadIndexEntry{
+		index = append(index, PayloadIndexEntry{
 			Path:       path,
 			RemotePath: remotePath,
 			Type:       fileType,
@@ -306,15 +318,4 @@ func buildArchivePayloadIndex(payloadFiles []syncer.ProjectFile) []archivePayloa
 		return index[i].Path < index[j].Path
 	})
 	return index
-}
-
-func modeFromArchiveConvert(label string) transform.Mode {
-	switch strings.TrimSpace(label) {
-	case "gas-to-ts":
-		return transform.ModeGasToTS
-	case "ts-to-gas":
-		return transform.ModeTSToGas
-	default:
-		return transform.Mode("")
-	}
 }

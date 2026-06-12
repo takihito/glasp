@@ -23,6 +23,32 @@ const (
 	ModeTSToGas Mode = "ts-to-gas"
 )
 
+// Label returns the human-readable conversion label used in archive
+// manifests and command output ("none" for the zero Mode).
+func (m Mode) Label() string {
+	switch m {
+	case ModeGasToTS:
+		return "gas-to-ts"
+	case ModeTSToGas:
+		return "ts-to-gas"
+	default:
+		return "none"
+	}
+}
+
+// ModeFromLabel converts a manifest label back to a Mode.
+// Unknown labels (including "none") map to the zero Mode.
+func ModeFromLabel(label string) Mode {
+	switch strings.TrimSpace(label) {
+	case "gas-to-ts":
+		return ModeGasToTS
+	case "ts-to-gas":
+		return ModeTSToGas
+	default:
+		return Mode("")
+	}
+}
+
 const (
 	fileTypeServerJS = "SERVER_JS"
 )

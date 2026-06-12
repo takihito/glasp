@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/takihito/glasp/internal/archive"
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/syncer"
 	"github.com/takihito/glasp/internal/transform"
@@ -79,7 +80,7 @@ func (c *PullCmd) Run(ctx *kong.Context) error {
 		return err
 	}
 	if archiveEnabled {
-		archiveRoot, err := archivePullRun(projectRoot, scriptID, cfg, content, workingContent, fileExtension, pullMode)
+		archiveRoot, err := archive.PullRun(projectRoot, scriptID, cfg, content, workingContent, fileExtension, pullMode)
 		if err != nil {
 			return err
 		}

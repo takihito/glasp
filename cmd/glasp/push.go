@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/takihito/glasp/internal/archive"
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/history"
 	"github.com/takihito/glasp/internal/syncer"
@@ -102,7 +103,7 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	}
 	content := syncer.BuildContent(payloadFiles)
 	if c.DryRun {
-		fmt.Printf("Dry run push for project %s (convert=%s): prepared %d files, skipped API update and archive writes\n", scriptID, convertLabel(pushMode), len(content.Files))
+		fmt.Printf("Dry run push for project %s (convert=%s): prepared %d files, skipped API update and archive writes\n", scriptID, pushMode.Label(), len(content.Files))
 		return nil
 	}
 
@@ -114,7 +115,7 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 		return err
 	}
 	if archiveEnabled {
-		archiveRoot, err := archivePushRun(projectRoot, scriptID, files, payloadFiles, fileExtension, pushMode)
+		archiveRoot, err := archive.PushRun(projectRoot, scriptID, files, payloadFiles, fileExtension, pushMode)
 		if err != nil {
 			return err
 		}
@@ -148,7 +149,7 @@ func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archi
 		return fmt.Errorf("history id %d has empty archive path", c.HistoryID)
 	}
 
-	manifest, payloadFiles, err := loadPushArchivePayload(archivePath, rootDir)
+	manifest, payloadFiles, err := archive.LoadPushPayload(archivePath, rootDir)
 	if err != nil {
 		return fmt.Errorf("failed to load archive for history id %d: %w", c.HistoryID, err)
 	}
@@ -179,7 +180,7 @@ func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archi
 		return err
 	}
 	if archiveEnabled {
-		archiveRoot, err := archivePushRun(projectRoot, scriptID, payloadFiles, payloadFiles, manifest.FileExtension, modeFromArchiveConvert(manifest.Convert))
+		archiveRoot, err := archive.PushRun(projectRoot, scriptID, payloadFiles, payloadFiles, manifest.FileExtension, transform.ModeFromLabel(manifest.Convert))
 		if err != nil {
 			return err
 		}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/takihito/glasp/internal/archive"
 	"github.com/takihito/glasp/internal/config"
 )
 
@@ -48,7 +49,7 @@ func TestPullCommandArchiveFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read manifest: %v", err)
 	}
-	var manifest archiveManifest
+	var manifest archive.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatalf("failed to unmarshal manifest: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestArchivePullRunWritesFailedManifestOnError(t *testing.T) {
 		t.Fatalf("SaveClaspConfig failed: %v", err)
 	}
 
-	_, err := archivePullRun(root, "script-id", cfg, sampleContent(), nil, "ts", "")
+	_, err := archive.PullRun(root, "script-id", cfg, sampleContent(), nil, "ts", "")
 	if err == nil {
 		t.Fatalf("expected archivePullRun to fail")
 	}
@@ -171,7 +172,7 @@ func TestArchivePullRunWritesFailedManifestOnError(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("expected failed manifest to exist: %v", readErr)
 	}
-	var manifest archiveManifest
+	var manifest archive.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
 		t.Fatalf("failed to unmarshal manifest: %v", err)
 	}

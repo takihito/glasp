@@ -208,20 +208,9 @@ func validateSupportedSyncFileExtension(fileExtension string) error {
 	return nil
 }
 
-func convertLabel(mode transform.Mode) string {
-	switch mode {
-	case transform.ModeGasToTS:
-		return "gas-to-ts"
-	case transform.ModeTSToGas:
-		return "ts-to-gas"
-	default:
-		return "none"
-	}
-}
-
 func dryRunConvertLabelForPull(fileExtension string) string {
 	if isTypeScriptFileExtension(fileExtension) {
-		return convertLabel(transform.ModeGasToTS)
+		return transform.ModeGasToTS.Label()
 	}
-	return convertLabel("")
+	return transform.Mode("").Label()
 }
