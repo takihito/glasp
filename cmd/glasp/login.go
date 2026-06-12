@@ -20,18 +20,26 @@ type LoginCmd struct {
 }
 
 // Run executes the login command.
+// The project root is resolved the same way as other commands: the nearest
+// directory containing .clasp.json, searching upward from the current
+// directory. Only when no project exists yet is an empty .clasp.json
+// created in the current directory.
 func (c *LoginCmd) Run(ctx *kong.Context) error {
-	projectRoot, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
-	cfgPath := filepath.Join(projectRoot, ".clasp.json")
-	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+	projectRoot, err := config.FindProjectRoot()
+	if err != nil {
+		return fmt.Errorf("login failed: %w", err)
+	}
+	if projectRoot == "" {
+		projectRoot = cwd
 		if err := config.SaveClaspConfig(projectRoot, &config.ClaspConfig{}); err != nil {
 			return fmt.Errorf("login failed: %w", err)
 		}
-	} else if err != nil {
-		return fmt.Errorf("login failed: %w", err)
+	} else if filepath.Clean(projectRoot) != filepath.Clean(cwd) {
+		fmt.Fprintf(stderr, "Project root: %s\n", projectRoot)
 	}
 
 	authPath := strings.TrimSpace(c.Auth)
