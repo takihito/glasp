@@ -307,28 +307,10 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		if err != nil {
 			return nil, err
 		}
-		if strings.Contains(file.Name, "\x00") {
+		if !validateRelPath(file.Name) {
 			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
 		}
-		if strings.HasPrefix(file.Name, `\\`) {
-			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-		}
-		rawSlashed := filepath.ToSlash(file.Name)
-		if strings.HasPrefix(rawSlashed, "/") {
-			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-		}
-		if len(rawSlashed) >= 2 && rawSlashed[1] == ':' {
-			drive := rawSlashed[0]
-			if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
-				return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-			}
-		}
-		for _, part := range strings.Split(rawSlashed, "/") {
-			if part == ".." {
-				return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-			}
-		}
-		remoteName := path.Clean(rawSlashed)
+		remoteName := path.Clean(filepath.ToSlash(file.Name))
 		if remoteName == "." || strings.HasPrefix(remoteName, "../") {
 			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
 		}
@@ -365,6 +347,38 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		return written[i].LocalPath < written[j].LocalPath
 	})
 	return written, nil
+}
+
+// validateRelPath reports whether raw is usable as a safe relative path:
+// non-empty, no NUL bytes, no UNC prefix, not absolute, no Windows drive
+// prefix, and no ".." elements. Callers remain responsible for cleaning the
+// path and verifying the joined result stays inside their base directory.
+func validateRelPath(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	if strings.Contains(raw, "\x00") {
+		return false
+	}
+	if strings.HasPrefix(raw, `\\`) {
+		return false
+	}
+	slashed := filepath.ToSlash(raw)
+	if strings.HasPrefix(slashed, "/") {
+		return false
+	}
+	if len(slashed) >= 2 && slashed[1] == ':' {
+		drive := slashed[0]
+		if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
+			return false
+		}
+	}
+	for _, part := range strings.Split(slashed, "/") {
+		if part == ".." {
+			return false
+		}
+	}
+	return true
 }
 
 func contentDir(opts Options) (string, error) {
@@ -581,28 +595,10 @@ func archiveTargetPath(archiveRoot, localPath string) (string, error) {
 	if strings.TrimSpace(localPath) == "" {
 		return "", fmt.Errorf("local path is empty")
 	}
-	if strings.Contains(localPath, "\x00") {
+	if !validateRelPath(localPath) {
 		return "", fmt.Errorf("invalid local path: %s", localPath)
 	}
-	slashed := filepath.ToSlash(localPath)
-	for _, part := range strings.Split(slashed, "/") {
-		if part == ".." {
-			return "", fmt.Errorf("invalid local path: %s", localPath)
-		}
-	}
-	if strings.HasPrefix(slashed, "/") {
-		return "", fmt.Errorf("invalid local path: %s", localPath)
-	}
-	if strings.HasPrefix(slashed, `\\`) {
-		return "", fmt.Errorf("invalid local path: %s", localPath)
-	}
-	if len(slashed) >= 2 && slashed[1] == ':' {
-		drive := slashed[0]
-		if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
-			return "", fmt.Errorf("invalid local path: %s", localPath)
-		}
-	}
-	cleaned := filepath.Clean(filepath.FromSlash(slashed))
+	cleaned := filepath.Clean(filepath.FromSlash(filepath.ToSlash(localPath)))
 	if cleaned == "." || cleaned == string(filepath.Separator) {
 		return "", fmt.Errorf("invalid local path: %s", localPath)
 	}

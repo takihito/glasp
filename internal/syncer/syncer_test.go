@@ -504,3 +504,35 @@ func TestBuildContent(t *testing.T) {
 		t.Fatalf("unexpected file[1]: %#v", content.Files[1])
 	}
 }
+
+func TestValidateRelPath(t *testing.T) {
+	valid := []string{
+		"Code.gs",
+		"src/Code.gs",
+		"a/b/c.html",
+		"appsscript.json",
+		"dir.with.dots/file.js",
+		"..name/file.js", // ".." only as a full path element is rejected
+	}
+	for _, p := range valid {
+		if !validateRelPath(p) {
+			t.Errorf("validateRelPath(%q) = false, want true", p)
+		}
+	}
+	invalid := []string{
+		"",
+		"a\x00b",
+		"/etc/passwd",
+		"../escape.js",
+		"a/../../escape.js",
+		"src/..",
+		`\\server\share\file.js`,
+		"C:evil.js",
+		"c:/evil.js",
+	}
+	for _, p := range invalid {
+		if validateRelPath(p) {
+			t.Errorf("validateRelPath(%q) = true, want false", p)
+		}
+	}
+}
