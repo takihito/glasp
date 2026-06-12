@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/takihito/glasp/internal/config"
-
 	"github.com/alecthomas/kong"
 	"google.golang.org/api/script/v1"
 )
@@ -25,58 +23,35 @@ func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	projectRoot, err := findExistingProjectRoot()
+	pc, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
-	scriptID, err := scriptIDFromConfig(projectRoot)
+	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	deployConfig, err := resolveDeploymentConfig(context.Background(), client, pc.ScriptID, c.Version, c.Description)
 	if err != nil {
 		return err
-	}
-	versionNumber := c.Version
-	if versionNumber <= 0 {
-		version, err := client.CreateVersion(context.Background(), scriptID, strings.TrimSpace(c.Description))
-		if err != nil {
-			return err
-		}
-		versionNumber = version.VersionNumber
-	}
-	deployConfig := &script.DeploymentConfig{
-		Description:      strings.TrimSpace(c.Description),
-		ManifestFileName: "appsscript",
-		VersionNumber:    versionNumber,
 	}
 
 	deploymentID := strings.TrimSpace(c.DeploymentID)
 	var deployment *script.Deployment
 	if deploymentID == "" {
-		deployment, err = client.CreateDeployment(context.Background(), scriptID, deployConfig)
+		deployment, err = client.CreateDeployment(context.Background(), pc.ScriptID, deployConfig)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Created deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
 	} else {
-		deployment, err = client.UpdateDeployment(context.Background(), scriptID, deploymentID, deployConfig)
+		deployment, err = client.UpdateDeployment(context.Background(), pc.ScriptID, deploymentID, deployConfig)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
 	}
-	entryPointsJSON, err := marshalJSONFn(deployment.EntryPoints)
-	if err != nil {
-		return fmt.Errorf("failed to marshal deployment entry points: %w", err)
-	}
-	fmt.Printf("entryPoints=%s\n", string(entryPointsJSON))
-	for _, entry := range deployment.EntryPoints {
-		if entry != nil && entry.WebApp != nil && strings.TrimSpace(entry.WebApp.Url) != "" {
-			fmt.Printf("webAppUrl=%s\n", entry.WebApp.Url)
-		}
-	}
-	return nil
+	return printEntryPoints(deployment.EntryPoints)
 }
 
 // UpdateDeploymentCmd represents the 'update-deployment' subcommand.
@@ -98,56 +73,24 @@ func (c *UpdateDeploymentCmd) Run(ctx *kong.Context) error {
 		return fmt.Errorf("deployment ID is required")
 	}
 
-	projectRoot, err := findExistingProjectRoot()
+	pc, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
-	cfg, err := config.LoadClaspConfig(projectRoot)
+	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(cfg.ScriptID) == "" {
-		return fmt.Errorf("script ID is required in .clasp.json")
-	}
-	scriptID, err := validateScriptID(cfg.ScriptID)
+	deployConfig, err := resolveDeploymentConfig(context.Background(), client, pc.ScriptID, c.Version, c.Description)
 	if err != nil {
 		return err
 	}
-
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	deployment, err := client.UpdateDeployment(context.Background(), pc.ScriptID, deploymentID, deployConfig)
 	if err != nil {
 		return err
-	}
-	versionNumber := c.Version
-	if versionNumber <= 0 {
-		version, err := client.CreateVersion(context.Background(), scriptID, strings.TrimSpace(c.Description))
-		if err != nil {
-			return err
-		}
-		versionNumber = version.VersionNumber
-	}
-
-	deployConfig := &script.DeploymentConfig{
-		Description:      strings.TrimSpace(c.Description),
-		ManifestFileName: "appsscript",
-		VersionNumber:    versionNumber,
-	}
-	deployment, err := client.UpdateDeployment(context.Background(), scriptID, deploymentID, deployConfig)
-	if err != nil {
-		return err
-	}
-	entryPointsJSON, err := marshalJSONFn(deployment.EntryPoints)
-	if err != nil {
-		return fmt.Errorf("failed to marshal deployment entry points: %w", err)
 	}
 	fmt.Printf("Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
-	fmt.Printf("entryPoints=%s\n", string(entryPointsJSON))
-	for _, entry := range deployment.EntryPoints {
-		if entry != nil && entry.WebApp != nil && strings.TrimSpace(entry.WebApp.Url) != "" {
-			fmt.Printf("webAppUrl=%s\n", entry.WebApp.Url)
-		}
-	}
-	return nil
+	return printEntryPoints(deployment.EntryPoints)
 }
 
 // ListDeploymentsCmd represents the 'list-deployments' subcommand.
@@ -201,15 +144,42 @@ func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
 			description = dep.DeploymentConfig.Description
 		}
 		fmt.Printf("deploymentId=%s version=%d description=%q\n", dep.DeploymentId, versionNumber, description)
-		entryPointsJSON, err := marshalJSONFn(dep.EntryPoints)
-		if err != nil {
-			return fmt.Errorf("failed to marshal deployment entry points: %w", err)
+		if err := printEntryPoints(dep.EntryPoints); err != nil {
+			return err
 		}
-		fmt.Printf("entryPoints=%s\n", string(entryPointsJSON))
-		for _, entry := range dep.EntryPoints {
-			if entry != nil && entry.WebApp != nil && strings.TrimSpace(entry.WebApp.Url) != "" {
-				fmt.Printf("webAppUrl=%s\n", entry.WebApp.Url)
-			}
+	}
+	return nil
+}
+
+// resolveDeploymentConfig builds the deployment config for the requested
+// version, creating a new immutable version when none is specified.
+func resolveDeploymentConfig(ctx context.Context, client scriptClient, scriptID string, versionNumber int64, description string) (*script.DeploymentConfig, error) {
+	description = strings.TrimSpace(description)
+	if versionNumber <= 0 {
+		version, err := client.CreateVersion(ctx, scriptID, description)
+		if err != nil {
+			return nil, err
+		}
+		versionNumber = version.VersionNumber
+	}
+	return &script.DeploymentConfig{
+		Description:      description,
+		ManifestFileName: "appsscript",
+		VersionNumber:    versionNumber,
+	}, nil
+}
+
+// printEntryPoints prints a deployment's entry points as JSON plus one
+// webAppUrl line per web app entry point.
+func printEntryPoints(entryPoints []*script.EntryPoint) error {
+	entryPointsJSON, err := marshalJSONFn(entryPoints)
+	if err != nil {
+		return fmt.Errorf("failed to marshal deployment entry points: %w", err)
+	}
+	fmt.Printf("entryPoints=%s\n", string(entryPointsJSON))
+	for _, entry := range entryPoints {
+		if entry != nil && entry.WebApp != nil && strings.TrimSpace(entry.WebApp.Url) != "" {
+			fmt.Printf("webAppUrl=%s\n", entry.WebApp.Url)
 		}
 	}
 	return nil

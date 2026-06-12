@@ -31,7 +31,7 @@ func (c *CloneCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	fileExt := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(c.FileExtension)), ".")
+	fileExt := normalizeFileExtension(c.FileExtension)
 	if fileExt == "" {
 		fileExt = "js"
 	}

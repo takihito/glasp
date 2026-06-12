@@ -27,11 +27,7 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 	if functionName == "" {
 		return fmt.Errorf("function name is required")
 	}
-	projectRoot, err := findExistingProjectRoot()
-	if err != nil {
-		return err
-	}
-	scriptID, err := scriptIDFromConfig(projectRoot)
+	pc, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
@@ -39,11 +35,11 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	op, err := client.RunFunction(context.Background(), scriptID, functionName, params, !c.NonDev)
+	op, err := client.RunFunction(context.Background(), pc.ScriptID, functionName, params, !c.NonDev)
 	if err != nil {
 		return err
 	}

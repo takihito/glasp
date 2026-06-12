@@ -106,6 +106,35 @@ func findExistingProjectRoot() (string, error) {
 	return root, nil
 }
 
+// projectContext bundles the resolved project root, its .clasp.json config,
+// and the validated script ID shared by most remote commands.
+type projectContext struct {
+	Root     string
+	Config   *config.ClaspConfig
+	ScriptID string
+}
+
+// loadProjectContext resolves the nearest project root, loads .clasp.json,
+// and validates its scriptId.
+func loadProjectContext() (*projectContext, error) {
+	root, err := findExistingProjectRoot()
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := config.LoadClaspConfig(root)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(cfg.ScriptID) == "" {
+		return nil, fmt.Errorf("script ID is required in .clasp.json")
+	}
+	scriptID, err := validateScriptID(cfg.ScriptID)
+	if err != nil {
+		return nil, err
+	}
+	return &projectContext{Root: root, Config: cfg, ScriptID: scriptID}, nil
+}
+
 func optionalAuthPath(raw string) (string, error) {
 	if raw == "" {
 		return "", nil

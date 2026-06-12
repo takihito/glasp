@@ -69,9 +69,8 @@ func (c *CreateCmd) Run(ctx *kong.Context) error {
 	if cfg.RootDir == "" {
 		cfg.RootDir = "./"
 	}
-	fileExt := strings.TrimSpace(c.FileExtension)
-	if fileExt != "" {
-		fileExt = strings.TrimPrefix(strings.ToLower(fileExt), ".")
+	fileExt := normalizeFileExtension(c.FileExtension)
+	if strings.TrimSpace(c.FileExtension) != "" {
 		if err := validateSupportedSyncFileExtension(fileExt); err != nil {
 			return err
 		}

@@ -34,23 +34,13 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	if c.Watch {
 		return fmt.Errorf("watch mode is not implemented yet")
 	}
-	projectRoot, err := findExistingProjectRoot()
+	pc, err := loadProjectContext()
 	if err != nil {
 		return err
 	}
-	cfg, err := config.LoadClaspConfig(projectRoot)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(cfg.ScriptID) == "" {
-		return fmt.Errorf("script ID is required in .clasp.json")
-	}
+	projectRoot, cfg, scriptID := pc.Root, pc.Config, pc.ScriptID
 	fileExtension := claspFileExtension(cfg)
 	if err := validateSupportedSyncFileExtension(fileExtension); err != nil {
-		return err
-	}
-	scriptID, err := validateScriptID(cfg.ScriptID)
-	if err != nil {
 		return err
 	}
 	glaspCfg, err := config.LoadGlaspConfig(projectRoot)

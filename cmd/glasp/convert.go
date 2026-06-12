@@ -173,6 +173,12 @@ func payloadJSPath(localPath string) string {
 	return strings.TrimSuffix(localPath, ext) + ".js"
 }
 
+// normalizeFileExtension lowercases a file extension and strips surrounding
+// whitespace and a leading dot ("  .TS " -> "ts").
+func normalizeFileExtension(raw string) string {
+	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(raw)), ".")
+}
+
 func claspFileExtension(cfg *config.ClaspConfig) string {
 	if cfg == nil || cfg.Extra == nil {
 		return ""
@@ -185,11 +191,11 @@ func claspFileExtension(cfg *config.ClaspConfig) string {
 	if err := json.Unmarshal(raw, &fileExtension); err != nil {
 		return ""
 	}
-	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(fileExtension)), ".")
+	return normalizeFileExtension(fileExtension)
 }
 
 func isTypeScriptFileExtension(fileExtension string) bool {
-	switch strings.TrimPrefix(strings.ToLower(strings.TrimSpace(fileExtension)), ".") {
+	switch normalizeFileExtension(fileExtension) {
 	case "ts", "tsx":
 		return true
 	default:
@@ -198,7 +204,7 @@ func isTypeScriptFileExtension(fileExtension string) bool {
 }
 
 func isTSXFileExtension(fileExtension string) bool {
-	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(fileExtension)), ".") == "tsx"
+	return normalizeFileExtension(fileExtension) == "tsx"
 }
 
 func validateSupportedSyncFileExtension(fileExtension string) error {
