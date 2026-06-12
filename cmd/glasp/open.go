@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/takihito/glasp/internal/config"
-
-	"github.com/alecthomas/kong"
 )
 
 // OpenScriptCmd represents the 'open-script' subcommand.
@@ -15,7 +13,7 @@ type OpenScriptCmd struct {
 }
 
 // Run executes the open-script command.
-func (c *OpenScriptCmd) Run(ctx *kong.Context) error {
+func (c *OpenScriptCmd) Run(rc *runContext) error {
 	scriptID := strings.TrimSpace(c.ScriptID)
 	if scriptID == "" {
 		projectRoot, err := findExistingProjectRoot()
@@ -34,9 +32,9 @@ func (c *OpenScriptCmd) Run(ctx *kong.Context) error {
 	}
 	url := fmt.Sprintf("https://script.google.com/d/%s/edit", validatedScriptID)
 	if err := openURLFn(url); err != nil {
-		fmt.Println(url)
+		fmt.Fprintln(stdout, url)
 		return fmt.Errorf("failed to open browser: %w", err)
 	}
-	fmt.Printf("Opened %s\n", url)
+	fmt.Fprintf(stdout, "Opened %s\n", url)
 	return nil
 }

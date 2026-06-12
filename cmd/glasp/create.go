@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,8 +8,6 @@ import (
 
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/syncer"
-
-	"github.com/alecthomas/kong"
 )
 
 // CreateCmd represents the 'create' subcommand.
@@ -24,7 +21,7 @@ type CreateCmd struct {
 }
 
 // Run executes the create command.
-func (c *CreateCmd) Run(ctx *kong.Context) error {
+func (c *CreateCmd) Run(rc *runContext) error {
 	title, err := validateTitle(c.Title)
 	if err != nil {
 		return err
@@ -52,12 +49,12 @@ func (c *CreateCmd) Run(ctx *kong.Context) error {
 	if err := ensureNoExistingClaspConfig(projectRoot); err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
 
-	project, err := client.CreateProject(context.Background(), title, parentID)
+	project, err := client.CreateProject(rc.Context(), title, parentID)
 	if err != nil {
 		return err
 	}
@@ -82,7 +79,7 @@ func (c *CreateCmd) Run(ctx *kong.Context) error {
 		return err
 	}
 
-	content, err := client.GetContent(context.Background(), project.ScriptId, 0)
+	content, err := client.GetContent(rc.Context(), project.ScriptId, 0)
 	if err != nil {
 		return err
 	}
@@ -94,6 +91,6 @@ func (c *CreateCmd) Run(ctx *kong.Context) error {
 		return err
 	}
 
-	fmt.Printf("Created project %s\n", project.ScriptId)
+	fmt.Fprintf(stdout, "Created project %s\n", project.ScriptId)
 	return nil
 }

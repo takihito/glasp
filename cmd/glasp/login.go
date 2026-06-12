@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,8 +8,6 @@ import (
 
 	"github.com/takihito/glasp/internal/auth"
 	"github.com/takihito/glasp/internal/config"
-
-	"github.com/alecthomas/kong"
 )
 
 // LoginCmd represents the 'login' subcommand.
@@ -24,7 +21,7 @@ type LoginCmd struct {
 // directory containing .clasp.json, searching upward from the current
 // directory. Only when no project exists yet is an empty .clasp.json
 // created in the current directory.
-func (c *LoginCmd) Run(ctx *kong.Context) error {
+func (c *LoginCmd) Run(rc *runContext) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
@@ -48,7 +45,7 @@ func (c *LoginCmd) Run(ctx *kong.Context) error {
 		if err := auth.ImportAuthFile(authPath, cacheFile); err != nil {
 			return fmt.Errorf("login failed: %w", err)
 		}
-		fmt.Println("Login successful.")
+		fmt.Fprintln(stdout, "Login successful.")
 		return nil
 	}
 
@@ -56,11 +53,11 @@ func (c *LoginCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
-	_, err = auth.LoginWithOptions(context.Background(), oauthConfig, auth.LoginOptions{PKCE: c.PKCE})
+	_, err = auth.LoginWithOptions(rc.Context(), oauthConfig, auth.LoginOptions{PKCE: c.PKCE})
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
-	fmt.Println("Login successful.")
+	fmt.Fprintln(stdout, "Login successful.")
 	return nil
 }
 
@@ -68,11 +65,11 @@ func (c *LoginCmd) Run(ctx *kong.Context) error {
 type LogoutCmd struct{}
 
 // Run executes the logout command.
-func (c *LogoutCmd) Run(ctx *kong.Context) error {
+func (c *LogoutCmd) Run(rc *runContext) error {
 	err := auth.Logout()
 	if err != nil {
 		return fmt.Errorf("logout failed: %w", err)
 	}
-	fmt.Println("Logout successful.")
+	fmt.Fprintln(stdout, "Logout successful.")
 	return nil
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/takihito/glasp/internal/syncer"
 	"github.com/takihito/glasp/internal/transform"
 
-	"github.com/alecthomas/kong"
 	"google.golang.org/api/script/v1"
 )
 
@@ -24,7 +23,7 @@ type ConvertCmd struct {
 }
 
 // Run executes the convert command.
-func (c *ConvertCmd) Run(ctx *kong.Context) error {
+func (c *ConvertCmd) Run(rc *runContext) error {
 	mode, err := transformMode(c.GasToTS, c.TSToGas)
 	if err != nil {
 		return err
@@ -58,7 +57,7 @@ func (c *ConvertCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Converted %d files to %s\n", len(result.Written), result.OutDir)
+	fmt.Fprintf(stdout, "Converted %d files to %s\n", len(result.Written), result.OutDir)
 	return nil
 }
 

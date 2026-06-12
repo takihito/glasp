@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/takihito/glasp/internal/archive"
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/syncer"
 	"github.com/takihito/glasp/internal/transform"
-
-	"github.com/alecthomas/kong"
 )
 
 // PullCmd represents the 'pull' subcommand.
@@ -20,7 +17,7 @@ type PullCmd struct {
 }
 
 // Run executes the pull command.
-func (c *PullCmd) Run(ctx *kong.Context) error {
+func (c *PullCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -42,16 +39,16 @@ func (c *PullCmd) Run(ctx *kong.Context) error {
 	if glaspCfg != nil && glaspCfg.Archive.Pull {
 		archiveEnabled = true
 	}
-	setRunArchiveMeta(archiveEnabled, "pull")
+	rc.setArchiveMeta(archiveEnabled, "pull")
 	if c.DryRun {
-		fmt.Printf("Dry run pull for project %s (convert=%s): skipped API fetch and local file writes\n", scriptID, dryRunConvertLabelForPull(fileExtension))
+		fmt.Fprintf(stdout, "Dry run pull for project %s (convert=%s): skipped API fetch and local file writes\n", scriptID, dryRunConvertLabelForPull(fileExtension))
 		return nil
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
-	content, err := client.GetContent(context.Background(), scriptID, 0)
+	content, err := client.GetContent(rc.Context(), scriptID, 0)
 	if err != nil {
 		return err
 	}
@@ -73,13 +70,13 @@ func (c *PullCmd) Run(ctx *kong.Context) error {
 		if err != nil {
 			return err
 		}
-		setRunArchivePath(archiveRoot)
-		fmt.Printf("Archived pull to %s\n", archiveRoot)
+		rc.setArchivePath(archiveRoot)
+		fmt.Fprintf(stdout, "Archived pull to %s\n", archiveRoot)
 	}
 	if _, err := syncer.ApplyRemoteContent(opts, workingContent); err != nil {
 		return err
 	}
 
-	fmt.Printf("Pulled project %s\n", scriptID)
+	fmt.Fprintf(stdout, "Pulled project %s\n", scriptID)
 	return nil
 }

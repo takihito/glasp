@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -196,11 +196,13 @@ func TestRecordRunHistoryStoresArchiveMetaAndCommandAlias(t *testing.T) {
 	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "script-id"}); err != nil {
 		t.Fatalf("SaveClaspConfig failed: %v", err)
 	}
-	resetRunArchiveMeta()
-	setRunArchiveMeta(true, "pull")
-	setRunArchivePath(filepath.Join(root, ".glasp", "archive", "script-id", "pull", "20260308_120000"))
+	meta := runArchiveMeta{
+		Enabled:   true,
+		Direction: "pull",
+		Path:      filepath.Join(root, ".glasp", "archive", "script-id", "pull", "20260308_120000"),
+	}
 
-	recordRunHistory([]string{"open", "--foo"}, "open", 15*time.Millisecond, nil)
+	recordRunHistory([]string{"open", "--foo"}, "open", 15*time.Millisecond, nil, meta)
 
 	entries, err := history.Read(root, history.ReadOptions{Order: "asc"})
 	if err != nil {
@@ -233,23 +235,16 @@ func findContentFile(content *script.Content, name string) *script.File {
 	return nil
 }
 
+// captureStdout redirects the package-level stdout writer into a buffer for
+// the duration of run.
 func captureStdout(t *testing.T, run func() error) (string, error) {
 	t.Helper()
-	orig := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe failed: %v", err)
-	}
-	os.Stdout = w
+	var buf bytes.Buffer
+	orig := stdout
+	stdout = &buf
+	defer func() { stdout = orig }()
 	runErr := run()
-	_ = w.Close()
-	os.Stdout = orig
-	out, readErr := io.ReadAll(r)
-	if readErr != nil {
-		t.Fatalf("read stdout failed: %v", readErr)
-	}
-	_ = r.Close()
-	return string(out), runErr
+	return buf.String(), runErr
 }
 
 func TestCommandFromArgs(t *testing.T) {

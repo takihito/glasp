@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,8 +8,6 @@ import (
 
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/syncer"
-
-	"github.com/alecthomas/kong"
 )
 
 // CloneCmd represents the 'clone' subcommand.
@@ -22,7 +19,7 @@ type CloneCmd struct {
 }
 
 // Run executes the clone command.
-func (c *CloneCmd) Run(ctx *kong.Context) error {
+func (c *CloneCmd) Run(rc *runContext) error {
 	scriptID, err := validateScriptID(c.ScriptID)
 	if err != nil {
 		return err
@@ -45,11 +42,11 @@ func (c *CloneCmd) Run(ctx *kong.Context) error {
 	if err := ensureNoExistingClaspConfig(projectRoot); err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
-	project, err := client.GetProject(context.Background(), scriptID)
+	project, err := client.GetProject(rc.Context(), scriptID)
 	if err != nil {
 		return err
 	}
@@ -67,7 +64,7 @@ func (c *CloneCmd) Run(ctx *kong.Context) error {
 	if err := config.SaveClaspConfig(projectRoot, cfg); err != nil {
 		return err
 	}
-	content, err := client.GetContent(context.Background(), scriptID, 0)
+	content, err := client.GetContent(rc.Context(), scriptID, 0)
 	if err != nil {
 		return err
 	}
@@ -87,6 +84,6 @@ func (c *CloneCmd) Run(ctx *kong.Context) error {
 		return err
 	}
 
-	fmt.Printf("Cloned project %s\n", scriptID)
+	fmt.Fprintf(stdout, "Cloned project %s\n", scriptID)
 	return nil
 }

@@ -6,8 +6,6 @@ import (
 
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/history"
-
-	"github.com/alecthomas/kong"
 )
 
 // HistoryCmd represents the 'history' subcommand.
@@ -19,7 +17,7 @@ type HistoryCmd struct {
 }
 
 // Run executes the history command.
-func (c *HistoryCmd) Run(ctx *kong.Context) error {
+func (c *HistoryCmd) Run(rc *runContext) error {
 	projectRoot, err := config.FindProjectRoot()
 	if err != nil {
 		return err
@@ -40,6 +38,6 @@ func (c *HistoryCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal history entries: %w", err)
 	}
-	fmt.Println(string(data))
+	fmt.Fprintln(stdout, string(data))
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alecthomas/kong"
 	"google.golang.org/api/script/v1"
 )
 
@@ -18,7 +17,7 @@ type CreateDeploymentCmd struct {
 }
 
 // Run executes the create-deployment command.
-func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
+func (c *CreateDeploymentCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -27,11 +26,11 @@ func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
+	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	deployConfig, err := resolveDeploymentConfig(context.Background(), client, pc.ScriptID, c.Version, c.Description)
+	deployConfig, err := resolveDeploymentConfig(rc.Context(), client, pc.ScriptID, c.Version, c.Description)
 	if err != nil {
 		return err
 	}
@@ -39,17 +38,17 @@ func (c *CreateDeploymentCmd) Run(ctx *kong.Context) error {
 	deploymentID := strings.TrimSpace(c.DeploymentID)
 	var deployment *script.Deployment
 	if deploymentID == "" {
-		deployment, err = client.CreateDeployment(context.Background(), pc.ScriptID, deployConfig)
+		deployment, err = client.CreateDeployment(rc.Context(), pc.ScriptID, deployConfig)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Created deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
+		fmt.Fprintf(stdout, "Created deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
 	} else {
-		deployment, err = client.UpdateDeployment(context.Background(), pc.ScriptID, deploymentID, deployConfig)
+		deployment, err = client.UpdateDeployment(rc.Context(), pc.ScriptID, deploymentID, deployConfig)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
+		fmt.Fprintf(stdout, "Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
 	}
 	return printEntryPoints(deployment.EntryPoints)
 }
@@ -63,7 +62,7 @@ type UpdateDeploymentCmd struct {
 }
 
 // Run executes the update-deployment command.
-func (c *UpdateDeploymentCmd) Run(ctx *kong.Context) error {
+func (c *UpdateDeploymentCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -77,19 +76,19 @@ func (c *UpdateDeploymentCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
+	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	deployConfig, err := resolveDeploymentConfig(context.Background(), client, pc.ScriptID, c.Version, c.Description)
+	deployConfig, err := resolveDeploymentConfig(rc.Context(), client, pc.ScriptID, c.Version, c.Description)
 	if err != nil {
 		return err
 	}
-	deployment, err := client.UpdateDeployment(context.Background(), pc.ScriptID, deploymentID, deployConfig)
+	deployment, err := client.UpdateDeployment(rc.Context(), pc.ScriptID, deploymentID, deployConfig)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
+	fmt.Fprintf(stdout, "Updated deployment %s (version=%d)\n", deployment.DeploymentId, deployConfig.VersionNumber)
 	return printEntryPoints(deployment.EntryPoints)
 }
 
@@ -100,7 +99,7 @@ type ListDeploymentsCmd struct {
 }
 
 // Run executes the list-deployments command.
-func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
+func (c *ListDeploymentsCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -121,16 +120,16 @@ func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
 			return err
 		}
 	}
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
-	deployments, err := client.ListDeployments(context.Background(), scriptID)
+	deployments, err := client.ListDeployments(rc.Context(), scriptID)
 	if err != nil {
 		return err
 	}
 	if len(deployments) == 0 {
-		fmt.Println("No deployments found.")
+		fmt.Fprintln(stdout, "No deployments found.")
 		return nil
 	}
 	for _, dep := range deployments {
@@ -143,7 +142,7 @@ func (c *ListDeploymentsCmd) Run(ctx *kong.Context) error {
 			versionNumber = dep.DeploymentConfig.VersionNumber
 			description = dep.DeploymentConfig.Description
 		}
-		fmt.Printf("deploymentId=%s version=%d description=%q\n", dep.DeploymentId, versionNumber, description)
+		fmt.Fprintf(stdout, "deploymentId=%s version=%d description=%q\n", dep.DeploymentId, versionNumber, description)
 		if err := printEntryPoints(dep.EntryPoints); err != nil {
 			return err
 		}
@@ -176,10 +175,10 @@ func printEntryPoints(entryPoints []*script.EntryPoint) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal deployment entry points: %w", err)
 	}
-	fmt.Printf("entryPoints=%s\n", string(entryPointsJSON))
+	fmt.Fprintf(stdout, "entryPoints=%s\n", string(entryPointsJSON))
 	for _, entry := range entryPoints {
 		if entry != nil && entry.WebApp != nil && strings.TrimSpace(entry.WebApp.Url) != "" {
-			fmt.Printf("webAppUrl=%s\n", entry.WebApp.Url)
+			fmt.Fprintf(stdout, "webAppUrl=%s\n", entry.WebApp.Url)
 		}
 	}
 	return nil

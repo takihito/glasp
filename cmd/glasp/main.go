@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -32,7 +33,42 @@ type runArchiveMeta struct {
 	Path      string
 }
 
-var currentRunArchive runArchiveMeta
+// runContext carries per-invocation state into command Run methods via kong
+// bindings: the base context and the archive metadata recorded into history.
+// All methods tolerate a nil receiver so tests can invoke Run(nil).
+type runContext struct {
+	ctx     context.Context
+	archive runArchiveMeta
+}
+
+// Context returns the invocation context.
+func (rc *runContext) Context() context.Context {
+	if rc == nil || rc.ctx == nil {
+		return context.Background()
+	}
+	return rc.ctx
+}
+
+func (rc *runContext) setArchiveMeta(enabled bool, direction string) {
+	if rc == nil {
+		return
+	}
+	rc.archive = runArchiveMeta{Enabled: enabled, Direction: direction}
+}
+
+func (rc *runContext) setArchivePath(path string) {
+	if rc == nil {
+		return
+	}
+	rc.archive.Path = path
+}
+
+func (rc *runContext) archiveMeta() runArchiveMeta {
+	if rc == nil {
+		return runArchiveMeta{}
+	}
+	return rc.archive
+}
 
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
@@ -56,12 +92,11 @@ type CLI struct {
 
 func main() {
 	start := time.Now()
-	resetRunArchiveMeta()
 	rawArgs := append([]string(nil), os.Args[1:]...)
 	commandName := commandFromArgs(rawArgs)
 
 	var cli CLI
-	ctx := kong.Parse(&cli,
+	parsed := kong.Parse(&cli,
 		kong.Name("glasp"),
 		kong.Description("A Go-based Google Apps Script CLI (clasp alternative)."),
 		kong.UsageOnError(),
@@ -71,8 +106,9 @@ func main() {
 			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
 		}
 	}
-	err := ctx.Run(&cli)
-	recordRunHistory(rawArgs, commandName, time.Since(start), err)
+	rc := &runContext{ctx: context.Background()}
+	err := parsed.Run(rc)
+	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
@@ -112,7 +148,7 @@ func commandFromArgs(args []string) string {
 	return first
 }
 
-func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error) {
+func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {
 	projectRoot, err := config.FindProjectRoot()
 	if err != nil {
 		log.Printf("Warning: failed to resolve project root for history: %v", err)
@@ -135,9 +171,9 @@ func recordRunHistory(args []string, commandName string, duration time.Duration,
 		Error:      message,
 		DurationMs: duration.Milliseconds(),
 		Archive: history.Archive{
-			Enabled:   currentRunArchive.Enabled,
-			Direction: currentRunArchive.Direction,
-			Path:      currentRunArchive.Path,
+			Enabled:   archiveMeta.Enabled,
+			Direction: archiveMeta.Direction,
+			Path:      archiveMeta.Path,
 		},
 	}
 	if err := history.Append(projectRoot, entry); err != nil {
@@ -201,18 +237,4 @@ func isSensitiveOption(opt string, keywords []string) bool {
 		}
 	}
 	return false
-}
-
-func resetRunArchiveMeta() {
-	currentRunArchive = runArchiveMeta{}
-}
-
-func setRunArchiveMeta(enabled bool, direction string) {
-	currentRunArchive.Enabled = enabled
-	currentRunArchive.Direction = direction
-	currentRunArchive.Path = ""
-}
-
-func setRunArchivePath(path string) {
-	currentRunArchive.Path = path
 }

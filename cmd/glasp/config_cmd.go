@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/takihito/glasp/internal/config"
-
-	"github.com/alecthomas/kong"
 )
 
 // ConfigCmd represents the 'config' subcommand.
@@ -19,7 +17,7 @@ type ConfigCmd struct {
 type ConfigInitCmd struct{}
 
 // Run executes the config init command.
-func (c *ConfigInitCmd) Run(ctx *kong.Context) error {
+func (c *ConfigInitCmd) Run(rc *runContext) error {
 	projectRoot, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to determine project root: %w", err)
@@ -39,6 +37,6 @@ func (c *ConfigInitCmd) Run(ctx *kong.Context) error {
 	if err := config.SaveGlaspConfig(projectRoot, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("Created config at %s\n", configPath)
+	fmt.Fprintf(stdout, "Created config at %s\n", configPath)
 	return nil
 }

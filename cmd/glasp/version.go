@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/alecthomas/kong"
 )
 
 var (
@@ -19,7 +17,7 @@ var (
 type VersionCmd struct{}
 
 // Run executes the version command.
-func (c *VersionCmd) Run(ctx *kong.Context) error {
-	fmt.Printf("glasp version %s (commit=%s, date=%s)\n", Version, Commit, Date)
+func (c *VersionCmd) Run(rc *runContext) error {
+	fmt.Fprintf(stdout, "glasp version %s (commit=%s, date=%s)\n", Version, Commit, Date)
 	return nil
 }

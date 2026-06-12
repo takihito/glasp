@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -11,8 +10,6 @@ import (
 	"github.com/takihito/glasp/internal/history"
 	"github.com/takihito/glasp/internal/syncer"
 	"github.com/takihito/glasp/internal/transform"
-
-	"github.com/alecthomas/kong"
 )
 
 // PushCmd represents the 'push' subcommand.
@@ -26,7 +23,7 @@ type PushCmd struct {
 }
 
 // Run executes the push command.
-func (c *PushCmd) Run(ctx *kong.Context) error {
+func (c *PushCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -51,7 +48,7 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	if glaspCfg != nil && glaspCfg.Archive.Push {
 		archiveEnabled = true
 	}
-	setRunArchiveMeta(archiveEnabled, "push")
+	rc.setArchiveMeta(archiveEnabled, "push")
 	if c.HistoryID < 0 {
 		return fmt.Errorf("history-id must be >= 0")
 	}
@@ -59,7 +56,7 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 		if c.Force {
 			return fmt.Errorf("--history-id cannot be combined with --force")
 		}
-		return c.runFromHistoryID(projectRoot, scriptID, authPath, archiveEnabled, cfg.RootDir)
+		return c.runFromHistoryID(rc, projectRoot, scriptID, authPath, archiveEnabled, cfg.RootDir)
 	}
 
 	var ignore *config.ClaspIgnore
@@ -93,15 +90,15 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 	}
 	content := syncer.BuildContent(payloadFiles)
 	if c.DryRun {
-		fmt.Printf("Dry run push for project %s (convert=%s): prepared %d files, skipped API update and archive writes\n", scriptID, pushMode.Label(), len(content.Files))
+		fmt.Fprintf(stdout, "Dry run push for project %s (convert=%s): prepared %d files, skipped API update and archive writes\n", scriptID, pushMode.Label(), len(content.Files))
 		return nil
 	}
 
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
-	if _, err := client.UpdateContent(context.Background(), scriptID, content); err != nil {
+	if _, err := client.UpdateContent(rc.Context(), scriptID, content); err != nil {
 		return err
 	}
 	if archiveEnabled {
@@ -109,15 +106,15 @@ func (c *PushCmd) Run(ctx *kong.Context) error {
 		if err != nil {
 			return err
 		}
-		setRunArchivePath(archiveRoot)
-		fmt.Printf("Archived push to %s\n", archiveRoot)
+		rc.setArchivePath(archiveRoot)
+		fmt.Fprintf(stdout, "Archived push to %s\n", archiveRoot)
 	}
 
-	fmt.Printf("Pushed project %s\n", scriptID)
+	fmt.Fprintf(stdout, "Pushed project %s\n", scriptID)
 	return nil
 }
 
-func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archiveEnabled bool, rootDir string) error {
+func (c *PushCmd) runFromHistoryID(rc *runContext, projectRoot, scriptID, authPath string, archiveEnabled bool, rootDir string) error {
 	entry, found, err := history.GetByID(projectRoot, c.HistoryID)
 	if err != nil {
 		return err
@@ -149,7 +146,7 @@ func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archi
 	if manifest.ScriptID != scriptID {
 		return fmt.Errorf("archive scriptId mismatch: history has %s but current project is %s", manifest.ScriptID, scriptID)
 	}
-	fmt.Printf(
+	fmt.Fprintf(stdout,
 		"Using history source id=%d archive.direction=%s archive.path=%s manifest.timestamp=%s\n",
 		c.HistoryID,
 		entry.Archive.Direction,
@@ -158,15 +155,15 @@ func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archi
 	)
 	content := syncer.BuildContent(payloadFiles)
 	if c.DryRun {
-		fmt.Printf("Dry run push from history id %d for project %s: prepared %d files from %s, skipped API update\n", c.HistoryID, scriptID, len(content.Files), archivePath)
+		fmt.Fprintf(stdout, "Dry run push from history id %d for project %s: prepared %d files from %s, skipped API update\n", c.HistoryID, scriptID, len(content.Files), archivePath)
 		return nil
 	}
 
-	client, err := newProjectScriptClient(context.Background(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
 	if err != nil {
 		return err
 	}
-	if _, err := client.UpdateContent(context.Background(), scriptID, content); err != nil {
+	if _, err := client.UpdateContent(rc.Context(), scriptID, content); err != nil {
 		return err
 	}
 	if archiveEnabled {
@@ -174,9 +171,9 @@ func (c *PushCmd) runFromHistoryID(projectRoot, scriptID, authPath string, archi
 		if err != nil {
 			return err
 		}
-		setRunArchivePath(archiveRoot)
-		fmt.Printf("Archived push to %s\n", archiveRoot)
+		rc.setArchivePath(archiveRoot)
+		fmt.Fprintf(stdout, "Archived push to %s\n", archiveRoot)
 	}
-	fmt.Printf("Pushed project %s from history id %d\n", scriptID, c.HistoryID)
+	fmt.Fprintf(stdout, "Pushed project %s from history id %d\n", scriptID, c.HistoryID)
 	return nil
 }

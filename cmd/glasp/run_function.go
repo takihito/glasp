@@ -1,12 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"github.com/alecthomas/kong"
 )
 
 // RunFunctionCmd represents the 'run-function' subcommand.
@@ -18,7 +15,7 @@ type RunFunctionCmd struct {
 }
 
 // Run executes the run-function command.
-func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
+func (c *RunFunctionCmd) Run(rc *runContext) error {
 	authPath, err := optionalAuthPath(c.Auth)
 	if err != nil {
 		return err
@@ -35,11 +32,11 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(context.Background(), pc.Root, authPath)
+	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath)
 	if err != nil {
 		return err
 	}
-	op, err := client.RunFunction(context.Background(), pc.ScriptID, functionName, params, !c.NonDev)
+	op, err := client.RunFunction(rc.Context(), pc.ScriptID, functionName, params, !c.NonDev)
 	if err != nil {
 		return err
 	}
@@ -57,10 +54,10 @@ func (c *RunFunctionCmd) Run(ctx *kong.Context) error {
 		return fmt.Errorf("script execution failed")
 	}
 	if len(op.Response) == 0 {
-		fmt.Println("{}")
+		fmt.Fprintln(stdout, "{}")
 		return nil
 	}
-	fmt.Printf("%s\n", string(op.Response))
+	fmt.Fprintf(stdout, "%s\n", string(op.Response))
 	return nil
 }
 
