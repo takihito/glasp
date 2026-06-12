@@ -5,11 +5,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
+	"github.com/takihito/glasp/internal/browser"
 	"github.com/takihito/glasp/internal/config"
 	"github.com/takihito/glasp/internal/history"
 	"github.com/takihito/glasp/internal/transform"
@@ -21,9 +20,7 @@ var (
 	newScriptClientWithCacheAuthFn           = newScriptClientWithCachePathAndAuth
 	transformConvertFn                       = transform.Convert
 	convertPulledContentFn                   = convertPulledContent
-	openURLFn                                = openURL
-	execCommandFn                            = exec.Command
-	runtimeGOOS                              = runtime.GOOS
+	openURLFn                                = browser.Open
 	marshalJSONFn                            = json.Marshal
 	stdout                         io.Writer = os.Stdout
 	stderr                         io.Writer = os.Stderr

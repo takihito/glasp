@@ -11,13 +11,12 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/takihito/glasp/internal/browser"
 	"github.com/takihito/glasp/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -475,19 +474,10 @@ func buildOAuthConfig(clientID, clientSecret string) *oauth2.Config {
 }
 
 // openBrowser opens the specified URL in the default browser of the user.
+// Failures are logged only: the login flow keeps waiting for the callback
+// and the user can open the printed URL manually.
 func openBrowser(url string) {
-	var err error
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-	if err != nil {
+	if err := browser.Start(url); err != nil {
 		log.Printf("Failed to open browser: %v", err)
 		log.Printf("Please manually open your browser and go to: %s", url)
 	}
