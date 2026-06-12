@@ -111,7 +111,7 @@ func clientFromCachedToken(ctx context.Context, config *oauth2.Config, cacheFile
 			log.Printf("Warning: Failed to save refreshed token: %v", saveErr)
 		}
 	}
-	fmt.Printf("Using cached or refreshed token from %s\n", cacheFile)
+	fmt.Fprintf(stdout, "Using cached or refreshed token from %s\n", cacheFile)
 	return oauth2.NewClient(ctx, tokenSource), true
 }
 
@@ -198,10 +198,10 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 	if pkce {
 		pkceVerifier = oauth2.GenerateVerifier()
 		authCodeOpts = append(authCodeOpts, oauth2.S256ChallengeOption(pkceVerifier))
-		fmt.Println("PKCE enabled: requesting authorization with S256 code challenge")
+		fmt.Fprintln(stdout, "PKCE enabled: requesting authorization with S256 code challenge")
 	}
 	authCodeURL := config.AuthCodeURL(stateToken, authCodeOpts...)
-	fmt.Printf("Go to the following link in your browser:\n%s\n", authCodeURL)
+	fmt.Fprintf(stdout, "Go to the following link in your browser:\n%s\n", authCodeURL)
 	openBrowserFn(authCodeURL)
 
 	srv, resultChan := startCallbackServer(listener, state)
@@ -212,11 +212,11 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 			if isError {
 				log.Println(message)
 			} else {
-				fmt.Println(message)
+				fmt.Fprintln(stdout, message)
 			}
 		}
 	}()
-	fmt.Println("Waiting for authentication flow to complete in browser...")
+	fmt.Fprintln(stdout, "Waiting for authentication flow to complete in browser...")
 
 	// Wait for the auth code or an error
 	var result authCodeResult
@@ -233,7 +233,7 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 	var exchangeOpts []oauth2.AuthCodeOption
 	if pkceVerifier != "" {
 		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(pkceVerifier))
-		fmt.Println("PKCE: exchanging authorization code with code_verifier")
+		fmt.Fprintln(stdout, "PKCE: exchanging authorization code with code_verifier")
 	}
 	token, err := config.Exchange(ctx, result.code, exchangeOpts...)
 	if err != nil {

@@ -64,7 +64,7 @@ func tokenFileJSON(token *oauth2.Token) ([]byte, error) {
 
 // saveToken saves the token to a file, overwriting any existing file.
 func saveToken(file string, token *oauth2.Token) error {
-	fmt.Printf("Saving credential file to: %s\n", file)
+	fmt.Fprintf(stdout, "Saving credential file to: %s\n", file)
 	if err := ensureTokenCacheDir(file); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func saveTokenExclusive(file string, token *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Saving credential file to: %s\n", file)
+	fmt.Fprintf(stdout, "Saving credential file to: %s\n", file)
 	if _, err := f.Write(data); err != nil {
 		return fmt.Errorf("failed to write token cache file: %w", err)
 	}

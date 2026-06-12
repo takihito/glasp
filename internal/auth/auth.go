@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -21,6 +22,11 @@ import (
 	"google.golang.org/api/drive/v3"  // Required for some scopes, e.g., drive.file
 	"google.golang.org/api/script/v1" // Google Apps Script API
 )
+
+// stdout receives user-facing output (login progress, token cache notices).
+// It is a variable so callers and tests can capture or redirect it; warnings
+// and diagnostics keep going through the log package.
+var stdout io.Writer = os.Stdout
 
 // Package-level variables for ClientID and ClientSecret.
 // These can be overridden at build time using ldflags:
@@ -153,7 +159,7 @@ func Logout() error {
 	}
 
 	if _, err := os.Stat(cacheFile); os.IsNotExist(err) {
-		fmt.Printf("No cached token found at %s. Already logged out.\n", cacheFile)
+		fmt.Fprintf(stdout, "No cached token found at %s. Already logged out.\n", cacheFile)
 		return nil
 	}
 
@@ -161,6 +167,6 @@ func Logout() error {
 		return fmt.Errorf("failed to remove token cache file %s: %w", cacheFile, err)
 	}
 
-	fmt.Printf("Successfully logged out. Removed %s\n", cacheFile)
+	fmt.Fprintf(stdout, "Successfully logged out. Removed %s\n", cacheFile)
 	return nil
 }

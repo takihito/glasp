@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -245,10 +246,10 @@ func LoadPushPayload(archivePath, rootDir string) (Manifest, []syncer.ProjectFil
 func payloadFileType(relPath string) (string, bool) {
 	clean := filepath.ToSlash(relPath)
 	lower := strings.ToLower(clean)
-	if filepath.Base(clean) == "appsscript.json" {
+	if path.Base(clean) == "appsscript.json" {
 		return syncer.FileTypeJSON, true
 	}
-	switch filepath.Ext(lower) {
+	switch path.Ext(lower) {
 	case ".js", ".gs":
 		return syncer.FileTypeServerJS, true
 	case ".html":
@@ -267,10 +268,10 @@ func payloadRemotePath(relPath, fileType, rootDir string) string {
 			clean = strings.TrimPrefix(clean, prefix)
 		}
 	}
-	if fileType == syncer.FileTypeJSON && filepath.Base(clean) == "appsscript.json" {
+	if fileType == syncer.FileTypeJSON && path.Base(clean) == "appsscript.json" {
 		return "appsscript"
 	}
-	ext := filepath.Ext(clean)
+	ext := path.Ext(clean)
 	if ext == "" {
 		return clean
 	}
