@@ -13,8 +13,6 @@ import (
 	"google.golang.org/api/script/v1"
 )
 
-const fileTypeServerJSForConvert = "SERVER_JS"
-
 // ConvertCmd represents the 'convert' subcommand.
 type ConvertCmd struct {
 	GasToTS bool     `help:"Convert GAS JavaScript (.js/.gs) to TypeScript."`
@@ -74,17 +72,21 @@ func transformMode(gasToTS, tsToGas bool) (transform.Mode, error) {
 	return "", fmt.Errorf("either --gas-to-ts or --ts-to-gas is required")
 }
 
+// transformFileExtensions returns a copy of the extension map with SERVER_JS
+// extensions overridden for the conversion direction. The input map is left
+// unmodified.
 func transformFileExtensions(existing map[string][]string, mode transform.Mode) map[string][]string {
-	if existing == nil {
-		existing = syncer.DefaultFileExtensions()
+	out := syncer.DefaultFileExtensions()
+	for key, values := range existing {
+		out[key] = append([]string(nil), values...)
 	}
 	switch mode {
 	case transform.ModeGasToTS:
-		existing["SERVER_JS"] = []string{".js", ".gs"}
+		out[syncer.FileTypeServerJS] = []string{".js", ".gs"}
 	case transform.ModeTSToGas:
-		existing["SERVER_JS"] = []string{".ts"}
+		out[syncer.FileTypeServerJS] = []string{".ts"}
 	}
-	return existing
+	return out
 }
 
 func defaultTransformOutDir(projectRoot string, mode transform.Mode) string {
@@ -115,7 +117,7 @@ func convertPulledContent(content *script.Content, projectRoot string) (*script.
 			Type:   file.Type,
 			Source: file.Source,
 		}
-		if file.Type == fileTypeServerJSForConvert {
+		if file.Type == syncer.FileTypeServerJS {
 			converted, err := transform.ConvertServerJSSource(transform.ModeGasToTS, file.Source, file.Name+".js", projectRoot)
 			if err != nil {
 				return nil, err
@@ -130,7 +132,7 @@ func convertPulledContent(content *script.Content, projectRoot string) (*script.
 func convertPushFiles(files []syncer.ProjectFile, projectRoot string) ([]syncer.ProjectFile, error) {
 	converted := make([]syncer.ProjectFile, 0, len(files))
 	for _, file := range files {
-		if file.Type == fileTypeServerJSForConvert && isTypeScriptPath(file.LocalPath) {
+		if file.Type == syncer.FileTypeServerJS && isTypeScriptPath(file.LocalPath) {
 			lowerPath := strings.ToLower(file.LocalPath)
 			if strings.HasSuffix(lowerPath, ".d.ts") {
 				continue

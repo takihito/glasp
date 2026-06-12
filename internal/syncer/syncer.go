@@ -14,10 +14,11 @@ import (
 	"google.golang.org/api/script/v1"
 )
 
+// Apps Script file types as used by the Script API.
 const (
-	fileTypeServerJS = "SERVER_JS"
-	fileTypeHTML     = "HTML"
-	fileTypeJSON     = "JSON"
+	FileTypeServerJS = "SERVER_JS"
+	FileTypeHTML     = "HTML"
+	FileTypeJSON     = "JSON"
 )
 
 // Options defines settings for local/remote synchronization.
@@ -85,9 +86,9 @@ func OptionsFromConfig(projectRoot string, cfg *config.ClaspConfig, ignore *conf
 // DefaultFileExtensions returns the default Apps Script file extensions.
 func DefaultFileExtensions() map[string][]string {
 	return map[string][]string{
-		fileTypeServerJS: {".js", ".gs", ".ts"},
-		fileTypeHTML:     {".html"},
-		fileTypeJSON:     {".json"},
+		FileTypeServerJS: {".js", ".gs", ".ts"},
+		FileTypeHTML:     {".html"},
+		FileTypeJSON:     {".json"},
 	}
 }
 
@@ -124,12 +125,12 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 				files = append(files, ProjectFile{
 					LocalPath:  "appsscript.json",
 					RemotePath: "appsscript",
-					Type:       fileTypeJSON,
+					Type:       FileTypeJSON,
 					Source:     string(source),
 				})
 				conflicts["appsscript"] = ProjectFile{
 					LocalPath: "appsscript.json",
-					Type:      fileTypeJSON,
+					Type:      FileTypeJSON,
 				}
 			} else if err != nil && !os.IsNotExist(err) {
 				return nil, err
@@ -379,14 +380,14 @@ func contentDir(opts Options) (string, error) {
 
 func fileTypeForPath(localPath string, fileExtensions map[string][]string) string {
 	ext := strings.ToLower(path.Ext(localPath))
-	if matchesExtension(ext, fileExtensions[fileTypeServerJS]) {
-		return fileTypeServerJS
+	if matchesExtension(ext, fileExtensions[FileTypeServerJS]) {
+		return FileTypeServerJS
 	}
-	if matchesExtension(ext, fileExtensions[fileTypeHTML]) {
-		return fileTypeHTML
+	if matchesExtension(ext, fileExtensions[FileTypeHTML]) {
+		return FileTypeHTML
 	}
-	if matchesExtension(ext, fileExtensions[fileTypeJSON]) && path.Base(localPath) == "appsscript.json" {
-		return fileTypeJSON
+	if matchesExtension(ext, fileExtensions[FileTypeJSON]) && path.Base(localPath) == "appsscript.json" {
+		return FileTypeJSON
 	}
 	return ""
 }
@@ -399,7 +400,7 @@ func remotePathFromLocal(relToContent string, fileType string) string {
 	if dir != "." {
 		remotePath = path.Join(dir, name)
 	}
-	if fileType == fileTypeJSON && path.Base(relToContent) == "appsscript.json" {
+	if fileType == FileTypeJSON && path.Base(relToContent) == "appsscript.json" {
 		remotePath = "appsscript"
 	}
 	return remotePath
@@ -407,12 +408,12 @@ func remotePathFromLocal(relToContent string, fileType string) string {
 
 func extensionForType(fileType string, fileExtensions map[string][]string) (string, error) {
 	switch fileType {
-	case fileTypeServerJS:
-		return firstExtension(fileExtensions[fileTypeServerJS]), nil
-	case fileTypeHTML:
-		return firstExtension(fileExtensions[fileTypeHTML]), nil
-	case fileTypeJSON:
-		return firstExtension(fileExtensions[fileTypeJSON]), nil
+	case FileTypeServerJS:
+		return firstExtension(fileExtensions[FileTypeServerJS]), nil
+	case FileTypeHTML:
+		return firstExtension(fileExtensions[FileTypeHTML]), nil
+	case FileTypeJSON:
+		return firstExtension(fileExtensions[FileTypeJSON]), nil
 	default:
 		return "", fmt.Errorf("unsupported file type: %s", fileType)
 	}
@@ -500,9 +501,9 @@ func parseFileExtensions(cfg *config.ClaspConfig) (map[string][]string, error) {
 	}
 
 	return map[string][]string{
-		fileTypeServerJS: normalizeExtensions(scriptExtensions),
-		fileTypeHTML:     normalizeExtensions(htmlExtensions),
-		fileTypeJSON:     normalizeExtensions(jsonExtensions),
+		FileTypeServerJS: normalizeExtensions(scriptExtensions),
+		FileTypeHTML:     normalizeExtensions(htmlExtensions),
+		FileTypeJSON:     normalizeExtensions(jsonExtensions),
 	}, nil
 }
 

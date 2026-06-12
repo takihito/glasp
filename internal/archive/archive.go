@@ -246,13 +246,13 @@ func payloadFileType(relPath string) (string, bool) {
 	clean := filepath.ToSlash(relPath)
 	lower := strings.ToLower(clean)
 	if filepath.Base(clean) == "appsscript.json" {
-		return "JSON", true
+		return syncer.FileTypeJSON, true
 	}
 	switch filepath.Ext(lower) {
 	case ".js", ".gs":
-		return "SERVER_JS", true
+		return syncer.FileTypeServerJS, true
 	case ".html":
-		return "HTML", true
+		return syncer.FileTypeHTML, true
 	default:
 		return "", false
 	}
@@ -267,7 +267,7 @@ func payloadRemotePath(relPath, fileType, rootDir string) string {
 			clean = strings.TrimPrefix(clean, prefix)
 		}
 	}
-	if fileType == "JSON" && filepath.Base(clean) == "appsscript.json" {
+	if fileType == syncer.FileTypeJSON && filepath.Base(clean) == "appsscript.json" {
 		return "appsscript"
 	}
 	ext := filepath.Ext(clean)
