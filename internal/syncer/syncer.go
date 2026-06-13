@@ -14,10 +14,11 @@ import (
 	"google.golang.org/api/script/v1"
 )
 
+// Apps Script file types as used by the Script API.
 const (
-	fileTypeServerJS = "SERVER_JS"
-	fileTypeHTML     = "HTML"
-	fileTypeJSON     = "JSON"
+	FileTypeServerJS = "SERVER_JS"
+	FileTypeHTML     = "HTML"
+	FileTypeJSON     = "JSON"
 )
 
 // Options defines settings for local/remote synchronization.
@@ -85,9 +86,9 @@ func OptionsFromConfig(projectRoot string, cfg *config.ClaspConfig, ignore *conf
 // DefaultFileExtensions returns the default Apps Script file extensions.
 func DefaultFileExtensions() map[string][]string {
 	return map[string][]string{
-		fileTypeServerJS: {".js", ".gs", ".ts"},
-		fileTypeHTML:     {".html"},
-		fileTypeJSON:     {".json"},
+		FileTypeServerJS: {".js", ".gs", ".ts"},
+		FileTypeHTML:     {".html"},
+		FileTypeJSON:     {".json"},
 	}
 }
 
@@ -124,12 +125,12 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 				files = append(files, ProjectFile{
 					LocalPath:  "appsscript.json",
 					RemotePath: "appsscript",
-					Type:       fileTypeJSON,
+					Type:       FileTypeJSON,
 					Source:     string(source),
 				})
 				conflicts["appsscript"] = ProjectFile{
 					LocalPath: "appsscript.json",
-					Type:      fileTypeJSON,
+					Type:      FileTypeJSON,
 				}
 			} else if err != nil && !os.IsNotExist(err) {
 				return nil, err
@@ -306,28 +307,10 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		if err != nil {
 			return nil, err
 		}
-		if strings.Contains(file.Name, "\x00") {
+		if !validateRelPath(file.Name) {
 			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
 		}
-		if strings.HasPrefix(file.Name, `\\`) {
-			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-		}
-		rawSlashed := filepath.ToSlash(file.Name)
-		if strings.HasPrefix(rawSlashed, "/") {
-			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-		}
-		if len(rawSlashed) >= 2 && rawSlashed[1] == ':' {
-			drive := rawSlashed[0]
-			if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
-				return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-			}
-		}
-		for _, part := range strings.Split(rawSlashed, "/") {
-			if part == ".." {
-				return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
-			}
-		}
-		remoteName := path.Clean(rawSlashed)
+		remoteName := path.Clean(filepath.ToSlash(file.Name))
 		if remoteName == "." || strings.HasPrefix(remoteName, "../") {
 			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
 		}
@@ -366,6 +349,38 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 	return written, nil
 }
 
+// validateRelPath reports whether raw is usable as a safe relative path:
+// non-empty, no NUL bytes, no UNC prefix, not absolute, no Windows drive
+// prefix, and no ".." elements. Callers remain responsible for cleaning the
+// path and verifying the joined result stays inside their base directory.
+func validateRelPath(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	if strings.Contains(raw, "\x00") {
+		return false
+	}
+	if strings.HasPrefix(raw, `\\`) {
+		return false
+	}
+	slashed := filepath.ToSlash(raw)
+	if strings.HasPrefix(slashed, "/") {
+		return false
+	}
+	if len(slashed) >= 2 && slashed[1] == ':' {
+		drive := slashed[0]
+		if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
+			return false
+		}
+	}
+	for _, part := range strings.Split(slashed, "/") {
+		if part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
 func contentDir(opts Options) (string, error) {
 	if opts.ProjectRoot == "" {
 		return "", fmt.Errorf("project root is empty")
@@ -379,14 +394,14 @@ func contentDir(opts Options) (string, error) {
 
 func fileTypeForPath(localPath string, fileExtensions map[string][]string) string {
 	ext := strings.ToLower(path.Ext(localPath))
-	if matchesExtension(ext, fileExtensions[fileTypeServerJS]) {
-		return fileTypeServerJS
+	if matchesExtension(ext, fileExtensions[FileTypeServerJS]) {
+		return FileTypeServerJS
 	}
-	if matchesExtension(ext, fileExtensions[fileTypeHTML]) {
-		return fileTypeHTML
+	if matchesExtension(ext, fileExtensions[FileTypeHTML]) {
+		return FileTypeHTML
 	}
-	if matchesExtension(ext, fileExtensions[fileTypeJSON]) && path.Base(localPath) == "appsscript.json" {
-		return fileTypeJSON
+	if matchesExtension(ext, fileExtensions[FileTypeJSON]) && path.Base(localPath) == "appsscript.json" {
+		return FileTypeJSON
 	}
 	return ""
 }
@@ -399,7 +414,7 @@ func remotePathFromLocal(relToContent string, fileType string) string {
 	if dir != "." {
 		remotePath = path.Join(dir, name)
 	}
-	if fileType == fileTypeJSON && path.Base(relToContent) == "appsscript.json" {
+	if fileType == FileTypeJSON && path.Base(relToContent) == "appsscript.json" {
 		remotePath = "appsscript"
 	}
 	return remotePath
@@ -407,12 +422,12 @@ func remotePathFromLocal(relToContent string, fileType string) string {
 
 func extensionForType(fileType string, fileExtensions map[string][]string) (string, error) {
 	switch fileType {
-	case fileTypeServerJS:
-		return firstExtension(fileExtensions[fileTypeServerJS]), nil
-	case fileTypeHTML:
-		return firstExtension(fileExtensions[fileTypeHTML]), nil
-	case fileTypeJSON:
-		return firstExtension(fileExtensions[fileTypeJSON]), nil
+	case FileTypeServerJS:
+		return firstExtension(fileExtensions[FileTypeServerJS]), nil
+	case FileTypeHTML:
+		return firstExtension(fileExtensions[FileTypeHTML]), nil
+	case FileTypeJSON:
+		return firstExtension(fileExtensions[FileTypeJSON]), nil
 	default:
 		return "", fmt.Errorf("unsupported file type: %s", fileType)
 	}
@@ -500,9 +515,9 @@ func parseFileExtensions(cfg *config.ClaspConfig) (map[string][]string, error) {
 	}
 
 	return map[string][]string{
-		fileTypeServerJS: normalizeExtensions(scriptExtensions),
-		fileTypeHTML:     normalizeExtensions(htmlExtensions),
-		fileTypeJSON:     normalizeExtensions(jsonExtensions),
+		FileTypeServerJS: normalizeExtensions(scriptExtensions),
+		FileTypeHTML:     normalizeExtensions(htmlExtensions),
+		FileTypeJSON:     normalizeExtensions(jsonExtensions),
 	}, nil
 }
 
@@ -580,28 +595,10 @@ func archiveTargetPath(archiveRoot, localPath string) (string, error) {
 	if strings.TrimSpace(localPath) == "" {
 		return "", fmt.Errorf("local path is empty")
 	}
-	if strings.Contains(localPath, "\x00") {
+	if !validateRelPath(localPath) {
 		return "", fmt.Errorf("invalid local path: %s", localPath)
 	}
-	slashed := filepath.ToSlash(localPath)
-	for _, part := range strings.Split(slashed, "/") {
-		if part == ".." {
-			return "", fmt.Errorf("invalid local path: %s", localPath)
-		}
-	}
-	if strings.HasPrefix(slashed, "/") {
-		return "", fmt.Errorf("invalid local path: %s", localPath)
-	}
-	if strings.HasPrefix(slashed, `\\`) {
-		return "", fmt.Errorf("invalid local path: %s", localPath)
-	}
-	if len(slashed) >= 2 && slashed[1] == ':' {
-		drive := slashed[0]
-		if (drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z') {
-			return "", fmt.Errorf("invalid local path: %s", localPath)
-		}
-	}
-	cleaned := filepath.Clean(filepath.FromSlash(slashed))
+	cleaned := filepath.Clean(filepath.FromSlash(filepath.ToSlash(localPath)))
 	if cleaned == "." || cleaned == string(filepath.Separator) {
 		return "", fmt.Errorf("invalid local path: %s", localPath)
 	}

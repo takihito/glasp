@@ -23,9 +23,31 @@ const (
 	ModeTSToGas Mode = "ts-to-gas"
 )
 
-const (
-	fileTypeServerJS = "SERVER_JS"
-)
+// Label returns the human-readable conversion label used in archive
+// manifests and command output ("none" for the zero Mode).
+func (m Mode) Label() string {
+	switch m {
+	case ModeGasToTS:
+		return "gas-to-ts"
+	case ModeTSToGas:
+		return "ts-to-gas"
+	default:
+		return "none"
+	}
+}
+
+// ModeFromLabel converts a manifest label back to a Mode.
+// Unknown labels (including "none") map to the zero Mode.
+func ModeFromLabel(label string) Mode {
+	switch strings.TrimSpace(label) {
+	case "gas-to-ts":
+		return ModeGasToTS
+	case "ts-to-gas":
+		return ModeTSToGas
+	default:
+		return Mode("")
+	}
+}
 
 var importExportPattern = regexp.MustCompile(`\b(import|export)\b`)
 
@@ -76,7 +98,7 @@ func Convert(opts syncer.Options, outDir string, mode Mode, filter *TargetFilter
 			return Result{}, fmt.Errorf("failed to create output directory: %w", err)
 		}
 		source := file.Source
-		if file.Type == fileTypeServerJS {
+		if file.Type == syncer.FileTypeServerJS {
 			if mode == ModeTSToGas {
 				warnImportExport(file.LocalPath, source)
 				resolveDir := resolveDirForFile(opts.ProjectRoot, file.LocalPath)
@@ -117,7 +139,7 @@ func outputPath(file syncer.ProjectFile, rootDir, outDir string, mode Mode) (str
 			rel = strings.TrimPrefix(rel, prefix)
 		}
 	}
-	if file.Type == fileTypeServerJS {
+	if file.Type == syncer.FileTypeServerJS {
 		base := strings.TrimSuffix(path.Base(rel), path.Ext(rel))
 		dir := path.Dir(rel)
 		ext := ".ts"

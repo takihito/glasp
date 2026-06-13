@@ -24,8 +24,8 @@ func TestOptionsFromConfigFileExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OptionsFromConfig failed: %v", err)
 	}
-	if opts.FileExtensions[fileTypeServerJS][0] != ".ts" {
-		t.Fatalf("expected .ts, got %v", opts.FileExtensions[fileTypeServerJS])
+	if opts.FileExtensions[FileTypeServerJS][0] != ".ts" {
+		t.Fatalf("expected .ts, got %v", opts.FileExtensions[FileTypeServerJS])
 	}
 	if !opts.SkipSubdirectories {
 		t.Fatalf("expected SkipSubdirectories to be true")
@@ -43,7 +43,7 @@ func TestFileExtensionJSAlwaysIncludesTS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OptionsFromConfig failed: %v", err)
 	}
-	exts := opts.FileExtensions[fileTypeServerJS]
+	exts := opts.FileExtensions[FileTypeServerJS]
 	hasJS := false
 	hasTS := false
 	for _, ext := range exts {
@@ -111,13 +111,13 @@ func TestCollectLocalFilesMappingAndIgnore(t *testing.T) {
 	for _, file := range files {
 		byRemote[file.RemotePath] = file
 	}
-	if file, ok := byRemote["Code"]; !ok || file.Type != fileTypeServerJS {
+	if file, ok := byRemote["Code"]; !ok || file.Type != FileTypeServerJS {
 		t.Fatalf("expected Code SERVER_JS, got %#v", file)
 	}
-	if file, ok := byRemote["ui/page"]; !ok || file.Type != fileTypeHTML {
+	if file, ok := byRemote["ui/page"]; !ok || file.Type != FileTypeHTML {
 		t.Fatalf("expected ui/page HTML, got %#v", file)
 	}
-	if file, ok := byRemote["appsscript"]; !ok || file.Type != fileTypeJSON || file.LocalPath != "src/appsscript.json" {
+	if file, ok := byRemote["appsscript"]; !ok || file.Type != FileTypeJSON || file.LocalPath != "src/appsscript.json" {
 		t.Fatalf("expected appsscript JSON under rootDir, got %#v", file)
 	}
 }
@@ -148,7 +148,7 @@ func TestCollectLocalFilesIncludesLegacyRootAppsscriptFallback(t *testing.T) {
 	for _, file := range files {
 		byRemote[file.RemotePath] = file
 	}
-	if file, ok := byRemote["appsscript"]; !ok || file.Type != fileTypeJSON || file.LocalPath != "appsscript.json" {
+	if file, ok := byRemote["appsscript"]; !ok || file.Type != FileTypeJSON || file.LocalPath != "appsscript.json" {
 		t.Fatalf("expected legacy root appsscript fallback, got %#v", file)
 	}
 }
@@ -178,10 +178,10 @@ func TestCollectLocalFilesSkipsDuplicateRootAppsscript(t *testing.T) {
 	for _, file := range files {
 		byRemote[file.RemotePath] = file
 	}
-	if file, ok := byRemote["Code"]; !ok || file.Type != fileTypeServerJS {
+	if file, ok := byRemote["Code"]; !ok || file.Type != FileTypeServerJS {
 		t.Fatalf("expected Code SERVER_JS, got %#v", file)
 	}
-	if file, ok := byRemote["appsscript"]; !ok || file.Type != fileTypeJSON {
+	if file, ok := byRemote["appsscript"]; !ok || file.Type != FileTypeJSON {
 		t.Fatalf("expected appsscript JSON, got %#v", file)
 	}
 }
@@ -227,9 +227,9 @@ func TestCollectLocalFilesRejectsRemoteNameConflicts(t *testing.T) {
 			ProjectRoot: root,
 			RootDir:     "src",
 			FileExtensions: map[string][]string{
-				fileTypeServerJS: {".gs"},
-				fileTypeHTML:     {".html", ".htm"},
-				fileTypeJSON:     {".json"},
+				FileTypeServerJS: {".gs"},
+				FileTypeHTML:     {".html", ".htm"},
+				FileTypeJSON:     {".json"},
 			},
 		}
 		if _, err := CollectLocalFiles(opts); err == nil {
@@ -240,20 +240,20 @@ func TestCollectLocalFilesRejectsRemoteNameConflicts(t *testing.T) {
 
 func TestNormalizeFileExtensionsFallsBackToDefaults(t *testing.T) {
 	input := map[string][]string{
-		fileTypeServerJS: {"", "  "},
-		fileTypeHTML:     {"\t"},
+		FileTypeServerJS: {"", "  "},
+		FileTypeHTML:     {"\t"},
 	}
 	normalized := normalizeFileExtensions(input)
 	defaults := DefaultFileExtensions()
 
-	if !reflect.DeepEqual(normalized[fileTypeServerJS], defaults[fileTypeServerJS]) {
-		t.Fatalf("expected server defaults %v, got %v", defaults[fileTypeServerJS], normalized[fileTypeServerJS])
+	if !reflect.DeepEqual(normalized[FileTypeServerJS], defaults[FileTypeServerJS]) {
+		t.Fatalf("expected server defaults %v, got %v", defaults[FileTypeServerJS], normalized[FileTypeServerJS])
 	}
-	if !reflect.DeepEqual(normalized[fileTypeHTML], defaults[fileTypeHTML]) {
-		t.Fatalf("expected html defaults %v, got %v", defaults[fileTypeHTML], normalized[fileTypeHTML])
+	if !reflect.DeepEqual(normalized[FileTypeHTML], defaults[FileTypeHTML]) {
+		t.Fatalf("expected html defaults %v, got %v", defaults[FileTypeHTML], normalized[FileTypeHTML])
 	}
-	if !reflect.DeepEqual(normalized[fileTypeJSON], defaults[fileTypeJSON]) {
-		t.Fatalf("expected json defaults %v, got %v", defaults[fileTypeJSON], normalized[fileTypeJSON])
+	if !reflect.DeepEqual(normalized[FileTypeJSON], defaults[FileTypeJSON]) {
+		t.Fatalf("expected json defaults %v, got %v", defaults[FileTypeJSON], normalized[FileTypeJSON])
 	}
 }
 
@@ -263,26 +263,26 @@ func TestApplyRemoteContentWritesFiles(t *testing.T) {
 		ProjectRoot: root,
 		RootDir:     "src",
 		FileExtensions: map[string][]string{
-			fileTypeServerJS: {".ts"},
-			fileTypeHTML:     {".html"},
-			fileTypeJSON:     {".json"},
+			FileTypeServerJS: {".ts"},
+			FileTypeHTML:     {".html"},
+			FileTypeJSON:     {".json"},
 		},
 	}
 	content := &script.Content{
 		Files: []*script.File{
 			{
 				Name:   "Code",
-				Type:   fileTypeServerJS,
+				Type:   FileTypeServerJS,
 				Source: "function a() {}",
 			},
 			{
 				Name:   "ui/page",
-				Type:   fileTypeHTML,
+				Type:   FileTypeHTML,
 				Source: "<p>hi</p>",
 			},
 			{
 				Name:   "appsscript",
-				Type:   fileTypeJSON,
+				Type:   FileTypeJSON,
 				Source: "{}",
 			},
 		},
@@ -317,12 +317,12 @@ func TestArchiveLocalFilesWritesFiles(t *testing.T) {
 		{
 			LocalPath: "src/Code.gs",
 			Source:    "function a() {}",
-			Type:      fileTypeServerJS,
+			Type:      FileTypeServerJS,
 		},
 		{
 			LocalPath: "appsscript.json",
 			Source:    "{}",
-			Type:      fileTypeJSON,
+			Type:      FileTypeJSON,
 		},
 	}
 
@@ -353,7 +353,7 @@ func TestArchiveLocalFilesRejectsTraversal(t *testing.T) {
 				{
 					LocalPath: localPath,
 					Source:    "function evil() {}",
-					Type:      fileTypeServerJS,
+					Type:      FileTypeServerJS,
 				},
 			}
 
@@ -370,9 +370,9 @@ func TestApplyRemoteContentRejectsInvalidRemoteNames(t *testing.T) {
 		ProjectRoot: root,
 		RootDir:     "src",
 		FileExtensions: map[string][]string{
-			fileTypeServerJS: {".gs"},
-			fileTypeHTML:     {".html"},
-			fileTypeJSON:     {".json"},
+			FileTypeServerJS: {".gs"},
+			FileTypeHTML:     {".html"},
+			FileTypeJSON:     {".json"},
 		},
 	}
 	cases := []string{
@@ -388,7 +388,7 @@ func TestApplyRemoteContentRejectsInvalidRemoteNames(t *testing.T) {
 				Files: []*script.File{
 					{
 						Name:   name,
-						Type:   fileTypeServerJS,
+						Type:   FileTypeServerJS,
 						Source: "function a() {}",
 					},
 				},
@@ -406,16 +406,16 @@ func TestApplyRemoteContentRejectsPathTraversal(t *testing.T) {
 		ProjectRoot: root,
 		RootDir:     "src",
 		FileExtensions: map[string][]string{
-			fileTypeServerJS: {".gs"},
-			fileTypeHTML:     {".html"},
-			fileTypeJSON:     {".json"},
+			FileTypeServerJS: {".gs"},
+			FileTypeHTML:     {".html"},
+			FileTypeJSON:     {".json"},
 		},
 	}
 	content := &script.Content{
 		Files: []*script.File{
 			{
 				Name:   "../../../etc/passwd",
-				Type:   fileTypeServerJS,
+				Type:   FileTypeServerJS,
 				Source: "function a() {}",
 			},
 		},
@@ -488,8 +488,8 @@ func TestSortFilesByPushOrder(t *testing.T) {
 
 func TestBuildContent(t *testing.T) {
 	files := []ProjectFile{
-		{RemotePath: "Code", Type: fileTypeServerJS, Source: "function a() {}"},
-		{RemotePath: "ui/page", Type: fileTypeHTML, Source: "<p>hi</p>"},
+		{RemotePath: "Code", Type: FileTypeServerJS, Source: "function a() {}"},
+		{RemotePath: "ui/page", Type: FileTypeHTML, Source: "<p>hi</p>"},
 	}
 
 	content := BuildContent(files)
@@ -497,10 +497,42 @@ func TestBuildContent(t *testing.T) {
 	if content == nil || len(content.Files) != 2 {
 		t.Fatalf("unexpected content: %#v", content)
 	}
-	if content.Files[0].Name != "Code" || content.Files[0].Type != fileTypeServerJS || content.Files[0].Source != "function a() {}" {
+	if content.Files[0].Name != "Code" || content.Files[0].Type != FileTypeServerJS || content.Files[0].Source != "function a() {}" {
 		t.Fatalf("unexpected file[0]: %#v", content.Files[0])
 	}
-	if content.Files[1].Name != "ui/page" || content.Files[1].Type != fileTypeHTML || content.Files[1].Source != "<p>hi</p>" {
+	if content.Files[1].Name != "ui/page" || content.Files[1].Type != FileTypeHTML || content.Files[1].Source != "<p>hi</p>" {
 		t.Fatalf("unexpected file[1]: %#v", content.Files[1])
+	}
+}
+
+func TestValidateRelPath(t *testing.T) {
+	valid := []string{
+		"Code.gs",
+		"src/Code.gs",
+		"a/b/c.html",
+		"appsscript.json",
+		"dir.with.dots/file.js",
+		"..name/file.js", // ".." only as a full path element is rejected
+	}
+	for _, p := range valid {
+		if !validateRelPath(p) {
+			t.Errorf("validateRelPath(%q) = false, want true", p)
+		}
+	}
+	invalid := []string{
+		"",
+		"a\x00b",
+		"/etc/passwd",
+		"../escape.js",
+		"a/../../escape.js",
+		"src/..",
+		`\\server\share\file.js`,
+		"C:evil.js",
+		"c:/evil.js",
+	}
+	for _, p := range invalid {
+		if validateRelPath(p) {
+			t.Errorf("validateRelPath(%q) = true, want false", p)
+		}
 	}
 }
