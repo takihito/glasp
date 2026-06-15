@@ -63,10 +63,10 @@ When `fileExtension` is `"ts"`, pulled files are automatically converted from GA
 
 Auth tokens are stored at `.glasp/access.json` (permission `0600`).
 
-Auth source priority:
-1. `--auth` flag (path to `.clasprc.json`)
-2. Project cache (`.glasp/access.json`)
-3. Interactive login flow
+```bash
+# A browser opens automatically to start the login flow
+glasp login
+```
 
 ### PKCE
 
@@ -84,7 +84,7 @@ PKCE applies only to the interactive `glasp login` flow.
 ### Reuse clasp credentials
 
 ```bash
-# Import clasp credentials into glasp
+# Reuse clasp credentials. They are imported via `glasp login` and saved to `.glasp/access.json`.
 glasp login --auth ~/.clasprc.json
 
 # Or use --auth directly on each command
@@ -94,6 +94,50 @@ glasp clone SCRIPT_ID --auth ~/.clasprc.json
 ```
 
 Start using glasp immediately when migrating from clasp — no re-authentication needed.
+
+### Auth source priority
+
+1. `--auth` flag (path to `.clasprc.json`)
+2. Project cache (`.glasp/access.json`)
+3. Interactive login flow
+
+## Timeout
+
+You can configure the HTTP request timeout for Script API calls. The default is **180 seconds**.
+
+### Priority
+
+1. `--no-timeout` flag / `GLASP_NO_TIMEOUT` environment variable (unlimited)
+2. `--timeout` flag / `GLASP_TIMEOUT` environment variable
+3. `timeoutSeconds` in `.glasp/config.json`
+4. Default (180 seconds)
+
+A value of `0` means *unset* and falls back to the next source. Negative values are invalid: they are ignored and a warning is printed (use `--no-timeout` to disable the timeout).
+
+### Configuration
+
+```bash
+# Set via CLI flag (seconds)
+glasp push --timeout 60
+
+# Set via environment variable
+GLASP_TIMEOUT=60 glasp push
+
+# Disable timeout (unlimited)
+glasp push --no-timeout
+
+# Disable timeout via environment variable
+GLASP_NO_TIMEOUT=1 glasp push
+```
+
+You can also set a project-wide value in `.glasp/config.json`:
+
+```json
+{
+  "archive": { "pull": false, "push": false },
+  "timeoutSeconds": 60
+}
+```
 
 ## Configuration
 

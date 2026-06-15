@@ -33,12 +33,17 @@ type runArchiveMeta struct {
 	Path      string
 }
 
+// defaultHTTPTimeout is applied to every Script API HTTP request when no
+// explicit --timeout flag or .glasp/config.json value is provided.
+const defaultHTTPTimeout = 180 * time.Second
+
 // runContext carries per-invocation state into command Run methods via kong
 // bindings: the base context and the archive metadata recorded into history.
 // All methods tolerate a nil receiver so tests can invoke Run(nil).
 type runContext struct {
-	ctx     context.Context
-	archive runArchiveMeta
+	ctx         context.Context
+	archive     runArchiveMeta
+	httpTimeout time.Duration
 }
 
 // Context returns the invocation context.
@@ -47,6 +52,14 @@ func (rc *runContext) Context() context.Context {
 		return context.Background()
 	}
 	return rc.ctx
+}
+
+// HTTPTimeout returns the resolved HTTP timeout for API requests.
+func (rc *runContext) HTTPTimeout() time.Duration {
+	if rc == nil {
+		return 0
+	}
+	return rc.httpTimeout
 }
 
 func (rc *runContext) setArchiveMeta(enabled bool, direction string) {
@@ -73,6 +86,8 @@ func (rc *runContext) archiveMeta() runArchiveMeta {
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
 	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
+	Timeout          int                 `name:"timeout" env:"GLASP_TIMEOUT" help:"HTTP timeout for Script API requests in seconds. 0 = use .glasp/config.json value or default (180s)."`
+	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -93,7 +108,6 @@ type CLI struct {
 func main() {
 	start := time.Now()
 	rawArgs := append([]string(nil), os.Args[1:]...)
-	commandName := commandFromArgs(rawArgs)
 
 	var cli CLI
 	parsed := kong.Parse(&cli,
@@ -101,12 +115,19 @@ func main() {
 		kong.Description("A Go-based Google Apps Script CLI (clasp alternative)."),
 		kong.UsageOnError(),
 	)
+	// Derive the history command name from kong's parsed selection rather than
+	// re-parsing os.Args ourselves. kong.Parse exits the process on a parse
+	// error, so the selection is always valid here.
+	commandName := selectedCommandName(parsed)
 	if dir := strings.TrimSpace(cli.Dir); dir != "" {
 		if err := os.Chdir(dir); err != nil {
 			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
 		}
 	}
-	rc := &runContext{ctx: context.Background()}
+	rc := &runContext{
+		ctx:         context.Background(),
+		httpTimeout: resolveHTTPTimeout(cli.Timeout, cli.NoTimeout),
+	}
 	err := parsed.Run(rc)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())
 	if err != nil {
@@ -114,38 +135,64 @@ func main() {
 	}
 }
 
-func commandFromArgs(args []string) string {
-	var first string
-	for _, arg := range args {
-		if strings.TrimSpace(arg) == "" {
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-		first = arg
-		break
+// resolveHTTPTimeout returns the HTTP timeout to use for Script API requests.
+// Priority: --no-timeout > --timeout / GLASP_TIMEOUT env > .glasp/config.json > defaultHTTPTimeout.
+// Returns 0 when noTimeout is true, which net/http interprets as no timeout.
+// A value of 0 means "unset" (fall back to config/default); negative values
+// are invalid and are warned about and ignored rather than silently dropped.
+func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
+	if noTimeout {
+		return 0
 	}
-	if first == "" {
+	switch {
+	case flagSeconds > 0:
+		return time.Duration(flagSeconds) * time.Second
+	case flagSeconds < 0:
+		// 0 is the documented "unset" sentinel; a negative value is invalid
+		// input. Warn so a mistaken --timeout/GLASP_TIMEOUT is visible.
+		log.Printf("Warning: --timeout/GLASP_TIMEOUT value %d is negative and ignored; using .glasp/config.json value or default (%s).", flagSeconds, defaultHTTPTimeout)
+	default:
+		// flagSeconds == 0 is the "unset" case: kong leaves an unset int flag
+		// at its zero value, so 0 cannot mean a real timeout. Fall through to
+		// the .glasp/config.json value, then the default. No warning.
+	}
+	projectRoot, err := config.FindProjectRoot()
+	if err == nil && projectRoot != "" {
+		glaspCfg, err := config.LoadGlaspConfig(projectRoot)
+		switch {
+		case err != nil:
+			// LoadGlaspConfig returns an error only when the file exists but is
+			// malformed/unreadable (a missing file yields a zero-value config).
+			// Warn instead of silently honoring the default so a timeoutSeconds
+			// typo is visible to the user rather than ignored.
+			log.Printf("Warning: failed to load .glasp/config.json; using default timeout (%s): %v", defaultHTTPTimeout, err)
+		case glaspCfg.TimeoutSeconds > 0:
+			return time.Duration(glaspCfg.TimeoutSeconds) * time.Second
+		case glaspCfg.TimeoutSeconds < 0:
+			// Negative seconds are invalid; warn rather than silently default.
+			log.Printf("Warning: timeoutSeconds in .glasp/config.json is negative (%d) and ignored; using default timeout (%s).", glaspCfg.TimeoutSeconds, defaultHTTPTimeout)
+		}
+	}
+	return defaultHTTPTimeout
+}
+
+// selectedCommandName returns the canonical command path that kong selected,
+// e.g. "push" or "config init". It walks the parsed context path and keeps
+// only command nodes, so global flags, their values, and positional argument
+// values never leak into the recorded history command. Command aliases such as
+// "deploy" or "open" resolve to their canonical names ("update-deployment",
+// "open-script") because kong records the matched command, not the typed alias.
+func selectedCommandName(ctx *kong.Context) string {
+	if ctx == nil {
 		return ""
 	}
-
-	// Keep aliases as entered, but include known nested subcommands
-	// so `config init` is distinguishable from the command group itself.
-	if first == "config" {
-		foundFirst := false
-		for _, arg := range args {
-			if strings.TrimSpace(arg) == "" || strings.HasPrefix(arg, "-") {
-				continue
-			}
-			if !foundFirst {
-				foundFirst = true
-				continue
-			}
-			return first + " " + arg
+	parts := make([]string, 0, 2)
+	for _, p := range ctx.Path {
+		if p.Command != nil {
+			parts = append(parts, p.Command.Name)
 		}
 	}
-	return first
+	return strings.Join(parts, " ")
 }
 
 func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {

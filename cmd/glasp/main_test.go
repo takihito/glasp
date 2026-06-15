@@ -191,7 +191,7 @@ func sampleContent() *script.Content {
 	}
 }
 
-func TestRecordRunHistoryStoresArchiveMetaAndCommandAlias(t *testing.T) {
+func TestRecordRunHistoryStoresArchiveMetaAndCommand(t *testing.T) {
 	root := useTempDir(t)
 	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "script-id"}); err != nil {
 		t.Fatalf("SaveClaspConfig failed: %v", err)
@@ -202,7 +202,9 @@ func TestRecordRunHistoryStoresArchiveMetaAndCommandAlias(t *testing.T) {
 		Path:      filepath.Join(root, ".glasp", "archive", "script-id", "pull", "20260308_120000"),
 	}
 
-	recordRunHistory([]string{"open", "--foo"}, "open", 15*time.Millisecond, nil, meta)
+	// The command name is the canonical command resolved by kong (see
+	// selectedCommandName); recordRunHistory stores it verbatim.
+	recordRunHistory([]string{"open", "--foo"}, "open-script", 15*time.Millisecond, nil, meta)
 
 	entries, err := history.Read(root, history.ReadOptions{Order: "asc"})
 	if err != nil {
@@ -212,8 +214,8 @@ func TestRecordRunHistoryStoresArchiveMetaAndCommandAlias(t *testing.T) {
 		t.Fatalf("expected one history entry, got %d", len(entries))
 	}
 	entry := entries[0]
-	if entry.Command != "open" {
-		t.Fatalf("expected alias command open, got %q", entry.Command)
+	if entry.Command != "open-script" {
+		t.Fatalf("expected command open-script, got %q", entry.Command)
 	}
 	if !entry.Archive.Enabled || entry.Archive.Direction != "pull" {
 		t.Fatalf("unexpected archive metadata: %#v", entry.Archive)
@@ -247,23 +249,54 @@ func captureStdout(t *testing.T, run func() error) (string, error) {
 	return buf.String(), runErr
 }
 
-func TestCommandFromArgs(t *testing.T) {
-	t.Run("nested config subcommand", func(t *testing.T) {
-		got := commandFromArgs([]string{"config", "init"})
-		if got != "config init" {
-			t.Fatalf("expected config init, got %q", got)
+func TestSelectedCommandName(t *testing.T) {
+	// parseCommandName parses args through a real kong CLI and returns the
+	// command name selectedCommandName derives, mirroring main()'s flow.
+	parseCommandName := func(t *testing.T, args []string) string {
+		t.Helper()
+		var cli CLI
+		p, err := kong.New(&cli, kong.Name("glasp"))
+		if err != nil {
+			t.Fatalf("kong.New failed: %v", err)
 		}
-	})
-	t.Run("alias is preserved as entered", func(t *testing.T) {
-		got := commandFromArgs([]string{"open", "--scriptId", "abc"})
-		if got != "open" {
-			t.Fatalf("expected open, got %q", got)
+		ctx, err := p.Parse(args)
+		if err != nil {
+			t.Fatalf("parse %v failed: %v", args, err)
 		}
-	})
-	t.Run("single command remains unchanged", func(t *testing.T) {
-		got := commandFromArgs([]string{"pull", "--dryrun"})
-		if got != "pull" {
-			t.Fatalf("expected pull, got %q", got)
+		return selectedCommandName(ctx)
+	}
+
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"single command", []string{"pull", "--dryrun"}, "pull"},
+		{"nested config subcommand", []string{"config", "init"}, "config init"},
+		{"positional value is not recorded", []string{"clone", "SCRIPT_ID"}, "clone"},
+		{"function name positional is not recorded", []string{"run-function", "myFunc"}, "run-function"},
+		{"valued global flag before subcommand", []string{"--timeout", "60", "push", "--archive"}, "push"},
+		{"--dir value before subcommand", []string{"--dir", "/tmp", "version"}, "version"},
+		{"short -C value before subcommand", []string{"-C", "/tmp", "pull"}, "pull"},
+		{"boolean global flag", []string{"--no-timeout", "push"}, "push"},
+		{"--flag=value form before subcommand", []string{"--timeout=60", "push"}, "push"},
+		{"valued global flag before nested config", []string{"--timeout", "30", "config", "init"}, "config init"},
+		// Aliases resolve to their canonical command names.
+		{"open alias resolves to canonical", []string{"open", "--scriptId", "abc"}, "open-script"},
+		{"create alias resolves to canonical", []string{"create"}, "create-script"},
+		{"deploy alias resolves to canonical", []string{"deploy", "DEPLOY_ID"}, "update-deployment"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := parseCommandName(t, tc.args); got != tc.want {
+				t.Fatalf("selectedCommandName(%v) = %q, want %q", tc.args, got, tc.want)
+			}
+		})
+	}
+
+	t.Run("nil context returns empty", func(t *testing.T) {
+		if got := selectedCommandName(nil); got != "" {
+			t.Fatalf("selectedCommandName(nil) = %q, want empty", got)
 		}
 	})
 }

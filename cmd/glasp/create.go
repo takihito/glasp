@@ -49,7 +49,7 @@ func (c *CreateCmd) Run(rc *runContext) error {
 	if err := ensureNoExistingClaspConfig(projectRoot); err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath)
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
 	if err != nil {
 		return err
 	}

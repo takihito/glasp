@@ -76,7 +76,8 @@ func ensureClaspIgnoreEntry(projectRoot, entry string) error {
 
 // GlaspConfig represents the structure of .glasp/config.json.
 type GlaspConfig struct {
-	Archive ArchiveConfig `json:"archive"`
+	Archive        ArchiveConfig `json:"archive"`
+	TimeoutSeconds int           `json:"timeoutSeconds,omitempty"`
 }
 
 // ArchiveConfig controls archive settings.
