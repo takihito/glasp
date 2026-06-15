@@ -112,6 +112,8 @@ You can configure the HTTP request timeout for Script API calls. The default is 
 3. `timeoutSeconds` in `.glasp/config.json`
 4. Default (180 seconds)
 
+A value of `0` means *unset* and falls back to the next source. Negative values are invalid: they are ignored and a warning is printed (use `--no-timeout` to disable the timeout).
+
 ### Configuration
 
 ```bash

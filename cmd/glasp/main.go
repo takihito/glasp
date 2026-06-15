@@ -138,24 +138,35 @@ func main() {
 // resolveHTTPTimeout returns the HTTP timeout to use for Script API requests.
 // Priority: --no-timeout > --timeout / GLASP_TIMEOUT env > .glasp/config.json > defaultHTTPTimeout.
 // Returns 0 when noTimeout is true, which net/http interprets as no timeout.
+// A value of 0 means "unset" (fall back to config/default); negative values
+// are invalid and are warned about and ignored rather than silently dropped.
 func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 	if noTimeout {
 		return 0
 	}
-	if flagSeconds > 0 {
+	switch {
+	case flagSeconds > 0:
 		return time.Duration(flagSeconds) * time.Second
+	case flagSeconds < 0:
+		// 0 is the documented "unset" sentinel; a negative value is invalid
+		// input. Warn so a mistaken --timeout/GLASP_TIMEOUT is visible.
+		log.Printf("Warning: --timeout/GLASP_TIMEOUT value %d is negative and ignored; using .glasp/config.json value or default (%s).", flagSeconds, defaultHTTPTimeout)
 	}
 	projectRoot, err := config.FindProjectRoot()
 	if err == nil && projectRoot != "" {
 		glaspCfg, err := config.LoadGlaspConfig(projectRoot)
-		if err != nil {
+		switch {
+		case err != nil:
 			// LoadGlaspConfig returns an error only when the file exists but is
 			// malformed/unreadable (a missing file yields a zero-value config).
 			// Warn instead of silently honoring the default so a timeoutSeconds
 			// typo is visible to the user rather than ignored.
 			log.Printf("Warning: failed to load .glasp/config.json; using default timeout (%s): %v", defaultHTTPTimeout, err)
-		} else if glaspCfg.TimeoutSeconds > 0 {
+		case glaspCfg.TimeoutSeconds > 0:
 			return time.Duration(glaspCfg.TimeoutSeconds) * time.Second
+		case glaspCfg.TimeoutSeconds < 0:
+			// Negative seconds are invalid; warn rather than silently default.
+			log.Printf("Warning: timeoutSeconds in .glasp/config.json is negative (%d) and ignored; using default timeout (%s).", glaspCfg.TimeoutSeconds, defaultHTTPTimeout)
 		}
 	}
 	return defaultHTTPTimeout

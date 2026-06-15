@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -106,6 +109,54 @@ func TestResolveHTTPTimeout(t *testing.T) {
 			t.Fatalf("resolveHTTPTimeout(0, false) = %v, want %v", got, defaultHTTPTimeout)
 		}
 	})
+
+	t.Run("negative flag warns and falls back to default", func(t *testing.T) {
+		// Outside a project so only the flag path runs.
+		_ = useTempDir(t)
+		out := captureLog(t, func() {
+			if got := resolveHTTPTimeout(-5, false); got != defaultHTTPTimeout {
+				t.Fatalf("resolveHTTPTimeout(-5, false) = %v, want %v", got, defaultHTTPTimeout)
+			}
+		})
+		if !strings.Contains(out, "negative") || !strings.Contains(out, "--timeout/GLASP_TIMEOUT") {
+			t.Fatalf("expected a negative --timeout warning, got log: %q", out)
+		}
+	})
+
+	t.Run("negative config timeoutSeconds warns and falls back to default", func(t *testing.T) {
+		root := useTempDir(t)
+		if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "s"}); err != nil {
+			t.Fatalf("SaveClaspConfig failed: %v", err)
+		}
+		if err := config.SaveGlaspConfig(root, &config.GlaspConfig{TimeoutSeconds: -10}); err != nil {
+			t.Fatalf("SaveGlaspConfig failed: %v", err)
+		}
+		out := captureLog(t, func() {
+			if got := resolveHTTPTimeout(0, false); got != defaultHTTPTimeout {
+				t.Fatalf("resolveHTTPTimeout(0, false) = %v, want %v", got, defaultHTTPTimeout)
+			}
+		})
+		if !strings.Contains(out, "negative") || !strings.Contains(out, "timeoutSeconds") {
+			t.Fatalf("expected a negative timeoutSeconds warning, got log: %q", out)
+		}
+	})
+}
+
+// captureLog redirects the standard logger's output into a buffer for the
+// duration of fn and returns what was written.
+func captureLog(t *testing.T, fn func()) string {
+	t.Helper()
+	var buf bytes.Buffer
+	origOut := log.Writer()
+	origFlags := log.Flags()
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(origOut)
+		log.SetFlags(origFlags)
+	}()
+	fn()
+	return buf.String()
 }
 
 func TestWithHTTPTimeoutRoundTrip(t *testing.T) {
