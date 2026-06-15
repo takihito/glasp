@@ -266,6 +266,42 @@ func TestCommandFromArgs(t *testing.T) {
 			t.Fatalf("expected pull, got %q", got)
 		}
 	})
+	t.Run("valued global flag value before subcommand is skipped", func(t *testing.T) {
+		got := commandFromArgs([]string{"--timeout", "60", "push", "--archive"})
+		if got != "push" {
+			t.Fatalf("expected push, got %q", got)
+		}
+	})
+	t.Run("--dir value before subcommand is skipped", func(t *testing.T) {
+		got := commandFromArgs([]string{"--dir", "/tmp", "version"})
+		if got != "version" {
+			t.Fatalf("expected version, got %q", got)
+		}
+	})
+	t.Run("short -C value before subcommand is skipped", func(t *testing.T) {
+		got := commandFromArgs([]string{"-C", "/tmp", "pull"})
+		if got != "pull" {
+			t.Fatalf("expected pull, got %q", got)
+		}
+	})
+	t.Run("boolean global flag takes no value", func(t *testing.T) {
+		got := commandFromArgs([]string{"--no-timeout", "push"})
+		if got != "push" {
+			t.Fatalf("expected push, got %q", got)
+		}
+	})
+	t.Run("--flag=value form before subcommand", func(t *testing.T) {
+		got := commandFromArgs([]string{"--timeout=60", "push"})
+		if got != "push" {
+			t.Fatalf("expected push, got %q", got)
+		}
+	})
+	t.Run("valued global flag before nested config subcommand", func(t *testing.T) {
+		got := commandFromArgs([]string{"--timeout", "30", "config", "init"})
+		if got != "config init" {
+			t.Fatalf("expected config init, got %q", got)
+		}
+	})
 }
 
 func TestSanitizeHistoryArgs(t *testing.T) {

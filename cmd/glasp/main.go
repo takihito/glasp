@@ -158,38 +158,47 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 	return defaultHTTPTimeout
 }
 
+// valuedGlobalFlags lists root-level flags that take a separate value token
+// (e.g. `--timeout 60`). Because these flags may be placed before the
+// subcommand, commandFromArgs must skip their value so it is not mistaken for
+// the command name. Boolean flags such as --no-timeout are intentionally
+// absent. The `--flag=value` form carries its own value and needs no entry.
+var valuedGlobalFlags = map[string]bool{
+	"--dir":     true,
+	"-C":        true,
+	"--timeout": true,
+}
+
 func commandFromArgs(args []string) string {
-	var first string
-	for _, arg := range args {
-		if strings.TrimSpace(arg) == "" {
+	// Collect the first two positional tokens, skipping flags and the value
+	// tokens of valued global flags placed before the subcommand.
+	positionals := make([]string, 0, 2)
+	for i := 0; i < len(args); i++ {
+		arg := strings.TrimSpace(args[i])
+		if arg == "" {
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {
+			if valuedGlobalFlags[arg] && i+1 < len(args) {
+				i++ // skip this flag's value token
+			}
 			continue
 		}
-		first = arg
-		break
+		positionals = append(positionals, arg)
+		if len(positionals) == 2 {
+			break
+		}
 	}
-	if first == "" {
+	if len(positionals) == 0 {
 		return ""
 	}
 
 	// Keep aliases as entered, but include known nested subcommands
 	// so `config init` is distinguishable from the command group itself.
-	if first == "config" {
-		foundFirst := false
-		for _, arg := range args {
-			if strings.TrimSpace(arg) == "" || strings.HasPrefix(arg, "-") {
-				continue
-			}
-			if !foundFirst {
-				foundFirst = true
-				continue
-			}
-			return first + " " + arg
-		}
+	if positionals[0] == "config" && len(positionals) > 1 {
+		return positionals[0] + " " + positionals[1]
 	}
-	return first
+	return positionals[0]
 }
 
 func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {
