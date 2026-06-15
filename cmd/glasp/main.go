@@ -108,7 +108,6 @@ type CLI struct {
 func main() {
 	start := time.Now()
 	rawArgs := append([]string(nil), os.Args[1:]...)
-	commandName := commandFromArgs(rawArgs)
 
 	var cli CLI
 	parsed := kong.Parse(&cli,
@@ -116,6 +115,10 @@ func main() {
 		kong.Description("A Go-based Google Apps Script CLI (clasp alternative)."),
 		kong.UsageOnError(),
 	)
+	// Derive the history command name from kong's parsed selection rather than
+	// re-parsing os.Args ourselves. kong.Parse exits the process on a parse
+	// error, so the selection is always valid here.
+	commandName := selectedCommandName(parsed)
 	if dir := strings.TrimSpace(cli.Dir); dir != "" {
 		if err := os.Chdir(dir); err != nil {
 			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
@@ -158,47 +161,23 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 	return defaultHTTPTimeout
 }
 
-// valuedGlobalFlags lists root-level flags that take a separate value token
-// (e.g. `--timeout 60`). Because these flags may be placed before the
-// subcommand, commandFromArgs must skip their value so it is not mistaken for
-// the command name. Boolean flags such as --no-timeout are intentionally
-// absent. The `--flag=value` form carries its own value and needs no entry.
-var valuedGlobalFlags = map[string]bool{
-	"--dir":     true,
-	"-C":        true,
-	"--timeout": true,
-}
-
-func commandFromArgs(args []string) string {
-	// Collect the first two positional tokens, skipping flags and the value
-	// tokens of valued global flags placed before the subcommand.
-	positionals := make([]string, 0, 2)
-	for i := 0; i < len(args); i++ {
-		arg := strings.TrimSpace(args[i])
-		if arg == "" {
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			if valuedGlobalFlags[arg] && i+1 < len(args) {
-				i++ // skip this flag's value token
-			}
-			continue
-		}
-		positionals = append(positionals, arg)
-		if len(positionals) == 2 {
-			break
-		}
-	}
-	if len(positionals) == 0 {
+// selectedCommandName returns the canonical command path that kong selected,
+// e.g. "push" or "config init". It walks the parsed context path and keeps
+// only command nodes, so global flags, their values, and positional argument
+// values never leak into the recorded history command. Command aliases such as
+// "deploy" or "open" resolve to their canonical names ("update-deployment",
+// "open-script") because kong records the matched command, not the typed alias.
+func selectedCommandName(ctx *kong.Context) string {
+	if ctx == nil {
 		return ""
 	}
-
-	// Keep aliases as entered, but include known nested subcommands
-	// so `config init` is distinguishable from the command group itself.
-	if positionals[0] == "config" && len(positionals) > 1 {
-		return positionals[0] + " " + positionals[1]
+	parts := make([]string, 0, 2)
+	for _, p := range ctx.Path {
+		if p.Command != nil {
+			parts = append(parts, p.Command.Name)
+		}
 	}
-	return positionals[0]
+	return strings.Join(parts, " ")
 }
 
 func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {
