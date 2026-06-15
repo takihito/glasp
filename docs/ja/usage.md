@@ -62,10 +62,10 @@ glasp pull --archive    # 取得したファイルをアーカイブ
 
 認証トークンは `.glasp/access.json` に保存されます（パーミッション `0600`）。
 
-認証ソースの優先順位:
-1. `--auth` フラグ（`.clasprc.json` のパス）
-2. プロジェクトキャッシュ（`.glasp/access.json`）
-3. インタラクティブログイン
+```bash
+# ブラウザが自動で開いてログインフローが開始されます
+glasp login 
+```
 
 ### PKCE
 
@@ -83,7 +83,7 @@ PKCE は `glasp login` フローにのみ適用されます。
 ### clasp の認証情報を再利用
 
 ```bash
-# clasp の認証情報を glasp にインポート
+# clasp の認証情報を再利用します。`glasp login` コマンドでインポートされ、`.glasp/access.json` に保存されます。
 glasp login --auth ~/.clasprc.json
 
 # または、各コマンドで直接 --auth を指定
@@ -93,6 +93,50 @@ glasp clone SCRIPT_ID --auth ~/.clasprc.json
 ```
 
 clasp から glasp への移行時に、再認証なしですぐに使い始められます。
+
+### 認証ソースの優先順位:
+
+1. `--auth` フラグ（`.clasprc.json` のパス）
+2. プロジェクトキャッシュ（`.glasp/access.json`）
+3. インタラクティブログイン
+
+
+
+## タイムアウト
+
+Script API への HTTP リクエストのタイムアウト時間を設定できます。デフォルトは **180 秒** です。
+
+### 優先順位
+
+1. `--no-timeout` フラグ / `GLASP_NO_TIMEOUT` 環境変数（無制限）
+2. `--timeout` フラグ / `GLASP_TIMEOUT` 環境変数
+3. `.glasp/config.json` の `timeoutSeconds`
+4. デフォルト（180 秒）
+
+### 設定方法
+
+```bash
+# CLI フラグで指定（秒）
+glasp push --timeout 60
+
+# 環境変数で指定
+GLASP_TIMEOUT=60 glasp push
+
+# タイムアウトを無制限にする
+glasp push --no-timeout
+
+# 環境変数で無制限にする
+GLASP_NO_TIMEOUT=1 glasp push
+```
+
+`.glasp/config.json` でプロジェクトごとに固定値を設定することもできます:
+
+```json
+{
+  "archive": { "pull": false, "push": false },
+  "timeoutSeconds": 60
+}
+```
 
 ## 設定
 

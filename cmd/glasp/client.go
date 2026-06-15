@@ -2,14 +2,30 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/takihito/glasp/internal/auth"
 	"github.com/takihito/glasp/internal/scriptapi"
 
 	"google.golang.org/api/script/v1"
 )
+
+type httpTimeoutCtxKey struct{}
+
+func withHTTPTimeout(ctx context.Context, d time.Duration) context.Context {
+	if d <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, httpTimeoutCtxKey{}, d)
+}
+
+func httpTimeoutFromCtx(ctx context.Context) time.Duration {
+	d, _ := ctx.Value(httpTimeoutCtxKey{}).(time.Duration)
+	return d
+}
 
 type scriptClient interface {
 	CreateProject(ctx context.Context, title, parentID string) (*script.Project, error)
@@ -54,6 +70,7 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 		if err != nil {
 			return nil, err
 		}
+		applyHTTPTimeout(ctx, httpClient)
 		return scriptapi.New(ctx, httpClient)
 	}
 
@@ -61,10 +78,20 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 	if err != nil {
 		return nil, err
 	}
+	applyHTTPTimeout(ctx, httpClient)
 	return scriptapi.New(ctx, httpClient)
 }
 
-func newProjectScriptClient(ctx context.Context, projectRoot, authPath string) (scriptClient, error) {
+// applyHTTPTimeout sets the Timeout field of httpClient to the value stored in
+// ctx by withHTTPTimeout. No-op when no timeout is present in ctx.
+func applyHTTPTimeout(ctx context.Context, httpClient *http.Client) {
+	if timeout := httpTimeoutFromCtx(ctx); timeout > 0 {
+		httpClient.Timeout = timeout
+	}
+}
+
+func newProjectScriptClient(ctx context.Context, projectRoot, authPath string, timeout time.Duration) (scriptClient, error) {
+	ctx = withHTTPTimeout(ctx, timeout)
 	source, err := auth.ResolveAuthSource(projectRoot, authPath)
 	if err != nil {
 		return nil, err

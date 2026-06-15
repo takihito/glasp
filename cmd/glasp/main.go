@@ -33,12 +33,17 @@ type runArchiveMeta struct {
 	Path      string
 }
 
+// defaultHTTPTimeout is applied to every Script API HTTP request when no
+// explicit --timeout flag or .glasp/config.json value is provided.
+const defaultHTTPTimeout = 180 * time.Second
+
 // runContext carries per-invocation state into command Run methods via kong
 // bindings: the base context and the archive metadata recorded into history.
 // All methods tolerate a nil receiver so tests can invoke Run(nil).
 type runContext struct {
-	ctx     context.Context
-	archive runArchiveMeta
+	ctx         context.Context
+	archive     runArchiveMeta
+	httpTimeout time.Duration
 }
 
 // Context returns the invocation context.
@@ -47,6 +52,14 @@ func (rc *runContext) Context() context.Context {
 		return context.Background()
 	}
 	return rc.ctx
+}
+
+// HTTPTimeout returns the resolved HTTP timeout for API requests.
+func (rc *runContext) HTTPTimeout() time.Duration {
+	if rc == nil {
+		return 0
+	}
+	return rc.httpTimeout
 }
 
 func (rc *runContext) setArchiveMeta(enabled bool, direction string) {
@@ -73,6 +86,8 @@ func (rc *runContext) archiveMeta() runArchiveMeta {
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
 	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
+	Timeout          int                 `name:"timeout" env:"GLASP_TIMEOUT" help:"HTTP timeout for Script API requests in seconds. 0 = use .glasp/config.json value or default (180s)."`
+	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -106,12 +121,34 @@ func main() {
 			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
 		}
 	}
-	rc := &runContext{ctx: context.Background()}
+	rc := &runContext{
+		ctx:         context.Background(),
+		httpTimeout: resolveHTTPTimeout(cli.Timeout, cli.NoTimeout),
+	}
 	err := parsed.Run(rc)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
+}
+
+// resolveHTTPTimeout returns the HTTP timeout to use for Script API requests.
+// Priority: --no-timeout > --timeout / GLASP_TIMEOUT env > .glasp/config.json > defaultHTTPTimeout.
+// Returns 0 when noTimeout is true, which net/http interprets as no timeout.
+func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
+	if noTimeout {
+		return 0
+	}
+	if flagSeconds > 0 {
+		return time.Duration(flagSeconds) * time.Second
+	}
+	projectRoot, err := config.FindProjectRoot()
+	if err == nil && projectRoot != "" {
+		if glaspCfg, err := config.LoadGlaspConfig(projectRoot); err == nil && glaspCfg.TimeoutSeconds > 0 {
+			return time.Duration(glaspCfg.TimeoutSeconds) * time.Second
+		}
+	}
+	return defaultHTTPTimeout
 }
 
 func commandFromArgs(args []string) string {
