@@ -151,6 +151,10 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 		// 0 is the documented "unset" sentinel; a negative value is invalid
 		// input. Warn so a mistaken --timeout/GLASP_TIMEOUT is visible.
 		log.Printf("Warning: --timeout/GLASP_TIMEOUT value %d is negative and ignored; using .glasp/config.json value or default (%s).", flagSeconds, defaultHTTPTimeout)
+	default:
+		// flagSeconds == 0 is the "unset" case: kong leaves an unset int flag
+		// at its zero value, so 0 cannot mean a real timeout. Fall through to
+		// the .glasp/config.json value, then the default. No warning.
 	}
 	projectRoot, err := config.FindProjectRoot()
 	if err == nil && projectRoot != "" {
