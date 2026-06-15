@@ -144,7 +144,14 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 	}
 	projectRoot, err := config.FindProjectRoot()
 	if err == nil && projectRoot != "" {
-		if glaspCfg, err := config.LoadGlaspConfig(projectRoot); err == nil && glaspCfg.TimeoutSeconds > 0 {
+		glaspCfg, err := config.LoadGlaspConfig(projectRoot)
+		if err != nil {
+			// LoadGlaspConfig returns an error only when the file exists but is
+			// malformed/unreadable (a missing file yields a zero-value config).
+			// Warn instead of silently honoring the default so a timeoutSeconds
+			// typo is visible to the user rather than ignored.
+			log.Printf("Warning: failed to load .glasp/config.json; using default timeout (%s): %v", defaultHTTPTimeout, err)
+		} else if glaspCfg.TimeoutSeconds > 0 {
 			return time.Duration(glaspCfg.TimeoutSeconds) * time.Second
 		}
 	}
