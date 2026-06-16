@@ -37,6 +37,11 @@ type runArchiveMeta struct {
 // explicit --timeout flag or .glasp/config.json value is provided.
 const defaultHTTPTimeout = 180 * time.Second
 
+// defaultHTTPRetries is the number of retry attempts for transient Script API
+// failures when no explicit --max-retries flag or .glasp/config.json value is
+// provided. Only idempotent commands use retries (see retryableCommands).
+const defaultHTTPRetries = 3
+
 // runContext carries per-invocation state into command Run methods via kong
 // bindings: the base context and the archive metadata recorded into history.
 // All methods tolerate a nil receiver so tests can invoke Run(nil).
@@ -44,6 +49,7 @@ type runContext struct {
 	ctx         context.Context
 	archive     runArchiveMeta
 	httpTimeout time.Duration
+	httpRetries int
 }
 
 // Context returns the invocation context.
@@ -60,6 +66,15 @@ func (rc *runContext) HTTPTimeout() time.Duration {
 		return 0
 	}
 	return rc.httpTimeout
+}
+
+// HTTPRetries returns the resolved retry count for Script API requests.
+// Returns 0 when rc is nil (no retries).
+func (rc *runContext) HTTPRetries() int {
+	if rc == nil {
+		return 0
+	}
+	return rc.httpRetries
 }
 
 func (rc *runContext) setArchiveMeta(enabled bool, direction string) {
@@ -88,6 +103,7 @@ type CLI struct {
 	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
 	Timeout          int                 `name:"timeout" env:"GLASP_TIMEOUT" help:"HTTP timeout for Script API requests in seconds. 0 = use .glasp/config.json value or default (180s)."`
 	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
+	MaxRetries       int                 `name:"max-retries" env:"GLASP_MAX_RETRIES" help:"Max retry attempts for transient Script API failures (5xx/429/network). Applies only to idempotent commands (push, pull, list-deployments, clone). 0 = use .glasp/config.json value or default (3). Use 1 to disable retries."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -124,9 +140,19 @@ func main() {
 			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
 		}
 	}
+	// retryableCommands lists the commands that may safely retry transient
+	// failures. All listed commands issue only idempotent or read-only API calls.
+	retryableCommands := map[string]bool{
+		"push": true, "pull": true, "list-deployments": true, "clone": true,
+	}
+	retries := resolveHTTPRetries(cli.MaxRetries)
+	if !retryableCommands[commandName] {
+		retries = 0
+	}
 	rc := &runContext{
 		ctx:         context.Background(),
 		httpTimeout: resolveHTTPTimeout(cli.Timeout, cli.NoTimeout),
+		httpRetries: retries,
 	}
 	err := parsed.Run(rc)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())
@@ -174,6 +200,34 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 		}
 	}
 	return defaultHTTPTimeout
+}
+
+// resolveHTTPRetries returns the number of retry attempts to use for Script API
+// requests. Priority: --max-retries / GLASP_MAX_RETRIES > .glasp/config.json
+// maxRetries > defaultHTTPRetries (3). A value of 0 means "unset"; negative
+// values are invalid and are warned about and ignored.
+func resolveHTTPRetries(flag int) int {
+	switch {
+	case flag > 0:
+		return flag
+	case flag < 0:
+		log.Printf("Warning: --max-retries/GLASP_MAX_RETRIES value %d is negative and ignored; using .glasp/config.json value or default (%d).", flag, defaultHTTPRetries)
+	default:
+		// flag == 0 is the "unset" case. Fall through to config/default.
+	}
+	projectRoot, err := config.FindProjectRoot()
+	if err == nil && projectRoot != "" {
+		glaspCfg, err := config.LoadGlaspConfig(projectRoot)
+		switch {
+		case err != nil:
+			log.Printf("Warning: failed to load .glasp/config.json; using default retries (%d): %v", defaultHTTPRetries, err)
+		case glaspCfg.MaxRetries > 0:
+			return glaspCfg.MaxRetries
+		case glaspCfg.MaxRetries < 0:
+			log.Printf("Warning: maxRetries in .glasp/config.json is negative (%d) and ignored; using default retries (%d).", glaspCfg.MaxRetries, defaultHTTPRetries)
+		}
+	}
+	return defaultHTTPRetries
 }
 
 // selectedCommandName returns the canonical command path that kong selected,

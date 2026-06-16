@@ -94,7 +94,7 @@ func (c *PushCmd) Run(rc *runContext) error {
 		return nil
 	}
 
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (c *PushCmd) runFromHistoryID(rc *runContext, projectRoot, scriptID, authPa
 		return nil
 	}
 
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}

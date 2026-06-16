@@ -140,6 +140,45 @@ GLASP_NO_TIMEOUT=1 glasp push
 }
 ```
 
+## リトライ
+
+glasp は一時的な Script API 障害（HTTP 5xx・429・ネットワークエラー）を自動的にリトライします。リトライが適用されるのは冪等なコマンドのみです: **push**、**pull**、**list-deployments**、**clone**。非冪等なコマンド（create-script・create-deployment・update-deployment・run-function）はリソースの重複作成を防ぐためリトライしません。
+
+デフォルトのリトライ回数は **3 回**（初回実行を含めると最大 4 回）です。
+
+### 優先順位
+
+1. `--max-retries` フラグ / `GLASP_MAX_RETRIES` 環境変数
+2. `.glasp/config.json` の `maxRetries`
+3. デフォルト（3）
+
+`0` は *未設定* を意味し、次の優先順位にフォールバックします。負の値は不正な入力として無視され、警告が表示されます。リトライを無効化するには `--max-retries 1` を使用してください（1 = リトライなし、初回実行のみ）。
+
+> **注意:** `--no-timeout` と `--max-retries` は独立しています。`--no-timeout` はリトライを無効化しません。`http.Client.Timeout`（`--timeout` で設定）はリトライ全体を含む合計時間の予算です。タイムアウトが短すぎるとリトライが実行される前に打ち切られる場合があります。
+
+### 設定方法
+
+```bash
+# リトライ回数を増やす
+glasp push --max-retries 5
+
+# 環境変数で指定
+GLASP_MAX_RETRIES=5 glasp push
+
+# リトライを無効化
+glasp push --max-retries 1
+```
+
+`.glasp/config.json` でプロジェクトごとに固定値を設定することもできます:
+
+```json
+{
+  "archive": { "pull": false, "push": false },
+  "timeoutSeconds": 60,
+  "maxRetries": 5
+}
+```
+
 ## 設定
 
 ### .clasp.json

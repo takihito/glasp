@@ -26,7 +26,7 @@ func (c *CreateDeploymentCmd) Run(rc *runContext) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *UpdateDeploymentCmd) Run(rc *runContext) error {
 	if err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), pc.Root, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (c *ListDeploymentsCmd) Run(rc *runContext) error {
 			return err
 		}
 	}
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}

@@ -44,7 +44,7 @@ func (c *PullCmd) Run(rc *runContext) error {
 		fmt.Fprintf(stdout, "Dry run pull for project %s (convert=%s): skipped API fetch and local file writes\n", scriptID, dryRunConvertLabelForPull(fileExtension))
 		return nil
 	}
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}
