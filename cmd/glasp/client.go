@@ -167,14 +167,9 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	for attempt := 0; attempt <= t.max; attempt++ {
 		if attempt > 0 {
 			delay := backoffDelay(attempt-1, t.baseWait, t.maxWait, t.rnd)
-			// Honour Retry-After header from the previous response.
 			if resp != nil {
-				if ra := resp.Header.Get("Retry-After"); ra != "" {
-					if secs, parseErr := strconv.ParseFloat(ra, 64); parseErr == nil && secs > 0 {
-						if d := time.Duration(secs * float64(time.Second)); d > delay {
-							delay = d
-						}
-					}
+				if d := retryAfterDelay(resp.Header); d > delay {
+					delay = d
 				}
 				// Drain and close the previous response body before the next attempt.
 				_, _ = io.Copy(io.Discard, resp.Body)
@@ -209,6 +204,20 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	// All attempts exhausted; return whatever we have.
 	return resp, err
+}
+
+// retryAfterDelay parses the Retry-After header as seconds and returns the
+// corresponding duration. Returns 0 if absent, non-numeric, or non-positive.
+func retryAfterDelay(h http.Header) time.Duration {
+	ra := h.Get("Retry-After")
+	if ra == "" {
+		return 0
+	}
+	secs, err := strconv.ParseFloat(ra, 64)
+	if err != nil || secs <= 0 {
+		return 0
+	}
+	return time.Duration(secs * float64(time.Second))
 }
 
 // backoffDelay returns the wait duration for the given attempt index using
