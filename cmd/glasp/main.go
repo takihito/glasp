@@ -103,7 +103,8 @@ type CLI struct {
 	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
 	Timeout          int                 `name:"timeout" env:"GLASP_TIMEOUT" help:"HTTP timeout for Script API requests in seconds. 0 = use .glasp/config.json value or default (180s)."`
 	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
-	MaxRetries       int                 `name:"max-retries" env:"GLASP_MAX_RETRIES" help:"Max retry attempts for transient Script API failures (5xx/429/network). Applies only to idempotent commands (push, pull, list-deployments, clone). 0 = use .glasp/config.json value or default (3). Use 1 to disable retries."`
+	MaxRetries       int                 `name:"max-retries" env:"GLASP_MAX_RETRIES" help:"Max retry attempts for transient Script API failures (5xx/429/network). Applies only to idempotent commands (push, pull, list-deployments, clone). 0 = use .glasp/config.json value or default (3)."`
+	NoRetries        bool                `name:"no-retries" env:"GLASP_NO_RETRIES" help:"Disable retries for Script API requests. Overrides --max-retries and .glasp/config.json."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -146,7 +147,7 @@ func main() {
 		"push": true, "pull": true, "list-deployments": true, "clone": true,
 	}
 	retries := resolveHTTPRetries(cli.MaxRetries)
-	if !retryableCommands[commandName] {
+	if cli.NoRetries || !retryableCommands[commandName] {
 		retries = 0
 	}
 	rc := &runContext{

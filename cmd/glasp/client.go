@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/takihito/glasp/internal/auth"
@@ -132,11 +133,14 @@ func applyHTTPRetry(ctx context.Context, httpClient *http.Client) {
 
 // retryTransport is an http.RoundTripper that retries on transient failures
 // (network errors, 429, 5xx) with exponential backoff and full jitter.
+// mu protects rnd because *rand.Rand is not goroutine-safe and http.Client
+// may be shared across goroutines.
 type retryTransport struct {
 	base     http.RoundTripper
 	max      int
 	baseWait time.Duration
 	maxWait  time.Duration
+	mu       sync.Mutex
 	rnd      *rand.Rand
 }
 
@@ -166,7 +170,9 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	)
 	for attempt := 0; attempt <= t.max; attempt++ {
 		if attempt > 0 {
+			t.mu.Lock()
 			delay := backoffDelay(attempt-1, t.baseWait, t.maxWait, t.rnd)
+			t.mu.Unlock()
 			if resp != nil {
 				if d := retryAfterDelay(resp.Header); d > delay {
 					delay = d
@@ -192,6 +198,9 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		resp, err = t.base.RoundTrip(req)
 		if err != nil {
+			if req.Context().Err() != nil {
+				return nil, req.Context().Err()
+			}
 			// Network error — retryable.
 			continue
 		}
@@ -222,19 +231,13 @@ func retryAfterDelay(h http.Header) time.Duration {
 
 // backoffDelay returns the wait duration for the given attempt index using
 // exponential backoff with full jitter: [0, min(base*2^attempt, max)].
+// All arithmetic is done in float64 before converting to Duration to avoid
+// int64 overflow when base*2^attempt exceeds math.MaxInt64.
 func backoffDelay(attempt int, base, max time.Duration, rnd *rand.Rand) time.Duration {
 	if attempt < 0 {
 		attempt = 0
 	}
-	// Cap the exponent to avoid int64 overflow (2^62 > math.MaxInt64/ns).
-	exp := attempt
-	if exp > 62 {
-		exp = 62
-	}
-	d := time.Duration(math.Exp2(float64(exp))) * base
-	if d <= 0 || d > max {
-		d = max
-	}
+	d := math.Min(math.Exp2(float64(attempt))*float64(base), float64(max))
 	if d <= 0 {
 		return 0
 	}

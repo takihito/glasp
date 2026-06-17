@@ -143,7 +143,7 @@ You can also set a project-wide value in `.glasp/config.json`:
 
 glasp retries transient Script API failures (HTTP 5xx, 429, network errors) automatically. Retries apply only to idempotent commands: **push**, **pull**, **list-deployments**, and **clone**. Non-idempotent commands (create-script, create-deployment, update-deployment, run-function) are never retried to prevent duplicate resource creation.
 
-The default retry count is **3 attempts** (4 total including the initial attempt).
+The default retry count is **3 retries** (4 total attempts including the initial attempt).
 
 ### Priority
 
@@ -151,9 +151,9 @@ The default retry count is **3 attempts** (4 total including the initial attempt
 2. `maxRetries` in `.glasp/config.json`
 3. Default (3)
 
-A value of `0` means *unset* and falls back to the next source. Negative values are invalid: they are ignored and a warning is printed. Use `--max-retries 1` to disable retries (1 = no retries, only the initial attempt).
+A value of `0` means *unset* and falls back to the next source. Negative values are invalid: they are ignored and a warning is printed. To disable retries entirely, use `--no-retries`.
 
-> **Note:** `--no-timeout` and `--max-retries` are independent. `--no-timeout` does not disable retries. `http.Client.Timeout` (set by `--timeout`) is a budget for the entire request chain including retries — a short timeout may prevent retries from running.
+> **Note:** `--no-timeout` and `--no-retries` are independent. `--no-timeout` does not disable retries. `http.Client.Timeout` (set by `--timeout`) is a budget for the entire request chain including retries — a short timeout may prevent retries from running.
 
 ### Configuration
 
@@ -165,7 +165,10 @@ glasp push --max-retries 5
 GLASP_MAX_RETRIES=5 glasp push
 
 # Disable retries
-glasp push --max-retries 1
+glasp push --no-retries
+
+# Disable retries via environment variable
+GLASP_NO_RETRIES=1 glasp push
 ```
 
 You can also set a project-wide value in `.glasp/config.json`:

@@ -196,30 +196,20 @@ func TestRetryTransportBodyReplay(t *testing.T) {
 }
 
 func TestRetryTransportRetryAfterHeader(t *testing.T) {
-	var delays []time.Duration
-	origSleep := func(d time.Duration) { delays = append(delays, d) }
-	_ = origSleep // not injected in this test; we verify via timing instead
-
-	retryAfterHeader := make(http.Header)
-	retryAfterHeader.Set("Retry-After", "0") // 0s = no extra delay; tests the header parse path
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{status: 429},
-			{status: 200},
-		},
-	}
-	// Attach Retry-After to the first queued response by wrapping.
 	var callCount int
 	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		callCount++
-		r := fake.responses[callCount-1]
+		status := 200
+		if callCount == 1 {
+			status = 429
+		}
 		resp := &http.Response{
-			StatusCode: r.status,
+			StatusCode: status,
 			Body:       io.NopCloser(strings.NewReader("")),
 			Header:     make(http.Header),
 		}
 		if callCount == 1 {
-			resp.Header.Set("Retry-After", "0")
+			resp.Header.Set("Retry-After", "0") // 0s — exercises the parse path without adding delay
 		}
 		return resp, nil
 	})
@@ -238,28 +228,22 @@ func TestRetryTransportRetryAfterHeader(t *testing.T) {
 
 func TestRetryTransportContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // already cancelled
+	cancel() // pre-cancelled: base.RoundTrip returns context.Canceled immediately
 
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{status: 503},
-			{status: 200},
-		},
-	}
-	rt := buildRetryTransport(fake, 3)
+	var callCount int
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		callCount++
+		return nil, req.Context().Err()
+	})
+	rt := buildRetryTransport(transport, 3)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
-	resp, err := rt.RoundTrip(req)
-	// First attempt succeeds (returns 503), then context cancel fires.
-	// The transport should return context.Canceled without a second attempt.
-	if err == nil {
-		// If the cancelled context propagated, we'd have err != nil.
-		// In this case, the first call returned 503 and delay was immediately
-		// interrupted by the cancelled context.
-		_ = resp
+	_, err := rt.RoundTrip(req)
+
+	if err != context.Canceled {
+		t.Fatalf("expected context.Canceled, got %v", err)
 	}
-	// At most 1 attempt: the second attempt never happens because ctx is done.
-	if fake.calls > 1 {
-		t.Fatalf("expected at most 1 call with cancelled context, got %d", fake.calls)
+	if callCount != 1 {
+		t.Fatalf("expected exactly 1 attempt with cancelled context, got %d", callCount)
 	}
 }
 
