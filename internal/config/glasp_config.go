@@ -78,6 +78,7 @@ func ensureClaspIgnoreEntry(projectRoot, entry string) error {
 type GlaspConfig struct {
 	Archive        ArchiveConfig `json:"archive"`
 	TimeoutSeconds int           `json:"timeoutSeconds,omitempty"`
+	MaxRetries     int           `json:"maxRetries,omitempty"`
 }
 
 // ArchiveConfig controls archive settings.

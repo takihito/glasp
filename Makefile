@@ -24,7 +24,7 @@ LDFLAGS := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(COMMIT)' -X 'main.Date
 # Test target
 test:
 	@echo "Running tests..."
-	@if [ -f .env ]; then export $$(grep -v '^ # ' .env | xargs) ; fi; go test -v ./...
+	@if [ -f .env ]; then export $$(grep -v '^# ' .env | xargs) ; fi; go test -v ./...
 
 # Build target
 build: $(BUILD_DIR)

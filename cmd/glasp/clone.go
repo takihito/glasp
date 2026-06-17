@@ -42,7 +42,7 @@ func (c *CloneCmd) Run(rc *runContext) error {
 	if err := ensureNoExistingClaspConfig(projectRoot); err != nil {
 		return err
 	}
-	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout())
+	client, err := newProjectScriptClient(rc.Context(), projectRoot, authPath, rc.HTTPTimeout(), rc.HTTPRetries())
 	if err != nil {
 		return err
 	}
