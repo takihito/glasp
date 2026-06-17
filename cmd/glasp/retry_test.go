@@ -138,10 +138,22 @@ func TestWithHTTPRetryRoundTrip(t *testing.T) {
 func TestApplyHTTPRetry(t *testing.T) {
 	t.Run("wraps with retryablehttp transport when n > 0", func(t *testing.T) {
 		ctx := withHTTPRetry(context.Background(), 3)
-		client := &http.Client{}
+		origTransport := &http.Transport{}
+		client := &http.Client{Transport: origTransport}
 		applyHTTPRetry(ctx, client)
-		if _, ok := client.Transport.(*retryablehttp.RoundTripper); !ok {
+
+		rt, ok := client.Transport.(*retryablehttp.RoundTripper)
+		if !ok {
 			t.Fatalf("expected Transport to be *retryablehttp.RoundTripper, got %T", client.Transport)
+		}
+		// The inner client must retain the original Transport, not the retry
+		// wrapper. If they are the same pointer the retry loop would recurse
+		// infinitely when calling rc.HTTPClient.Do().
+		if rt.Client.HTTPClient.Transport == client.Transport {
+			t.Fatalf("inner client Transport must not equal the outer retryablehttp.RoundTripper (infinite recursion)")
+		}
+		if rt.Client.HTTPClient.Transport != origTransport {
+			t.Fatalf("inner client Transport = %T, want original *http.Transport", rt.Client.HTTPClient.Transport)
 		}
 	})
 

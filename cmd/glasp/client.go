@@ -115,8 +115,14 @@ func applyHTTPRetry(ctx context.Context, httpClient *http.Client) {
 	if n <= 0 {
 		return
 	}
+	// Copy the original client so the retryablehttp inner client retains the
+	// oauth2 Transport. Without this copy, rc.HTTPClient and httpClient point
+	// to the same struct; the subsequent *httpClient = *rc.StandardClient()
+	// overwrites that struct with a retryablehttp Transport, causing infinite
+	// recursion when the retry loop calls rc.HTTPClient.Do().
+	inner := *httpClient
 	rc := retryablehttp.NewClient()
-	rc.HTTPClient = httpClient
+	rc.HTTPClient = &inner
 	rc.RetryMax = n
 	rc.RetryWaitMin = 500 * time.Millisecond
 	rc.RetryWaitMax = 30 * time.Second
