@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/takihito/glasp/internal/config"
@@ -154,6 +155,15 @@ func TestApplyHTTPRetry(t *testing.T) {
 		}
 		if rt.Client.HTTPClient.Transport != origTransport {
 			t.Fatalf("inner client Transport = %T, want original *http.Transport", rt.Client.HTTPClient.Transport)
+		}
+		if rt.Client.RetryMax != 3 {
+			t.Fatalf("RetryMax = %d, want 3", rt.Client.RetryMax)
+		}
+		if rt.Client.RetryWaitMin != 500*time.Millisecond {
+			t.Fatalf("RetryWaitMin = %v, want 500ms", rt.Client.RetryWaitMin)
+		}
+		if rt.Client.RetryWaitMax != 30*time.Second {
+			t.Fatalf("RetryWaitMax = %v, want 30s", rt.Client.RetryWaitMax)
 		}
 	})
 

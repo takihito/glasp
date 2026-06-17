@@ -5,6 +5,7 @@ go 1.25.8
 require (
 	github.com/alecthomas/kong v1.15.0
 	github.com/evanw/esbuild v0.28.1
+	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.46.0
@@ -24,7 +25,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.16 // indirect
 	github.com/googleapis/gax-go/v2 v2.22.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
