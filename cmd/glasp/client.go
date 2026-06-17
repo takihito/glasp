@@ -84,8 +84,8 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 		if err != nil {
 			return nil, err
 		}
-		applyHTTPTimeout(ctx, httpClient)
 		applyHTTPRetry(ctx, httpClient)
+		applyHTTPTimeout(ctx, httpClient)
 		return scriptapi.New(ctx, httpClient)
 	}
 
@@ -93,8 +93,8 @@ func newScriptClientWithAuthInputs(ctx context.Context, cacheFile, authPath stri
 	if err != nil {
 		return nil, err
 	}
-	applyHTTPTimeout(ctx, httpClient)
 	applyHTTPRetry(ctx, httpClient)
+	applyHTTPTimeout(ctx, httpClient)
 	return scriptapi.New(ctx, httpClient)
 }
 
