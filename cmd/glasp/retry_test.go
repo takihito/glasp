@@ -2,283 +2,13 @@ package main
 
 import (
 	"context"
-	"errors"
-	"io"
-	"math/rand"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/takihito/glasp/internal/config"
 )
-
-// roundTripFunc adapts a plain function to http.RoundTripper.
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
-
-// fakeTransport is a test RoundTripper that returns responses from a queue.
-type fakeTransport struct {
-	calls     int
-	responses []fakeResponse
-}
-
-type fakeResponse struct {
-	status int
-	err    error
-	body   string
-}
-
-func (f *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	i := f.calls
-	f.calls++
-	if i >= len(f.responses) {
-		return nil, errors.New("unexpected call: no more responses queued")
-	}
-	r := f.responses[i]
-	if r.err != nil {
-		return nil, r.err
-	}
-	body := r.body
-	if body == "" {
-		body = "ok"
-	}
-	return &http.Response{
-		StatusCode: r.status,
-		Body:       io.NopCloser(strings.NewReader(body)),
-		Header:     make(http.Header),
-	}, nil
-}
-
-func buildRetryTransport(base http.RoundTripper, max int) *retryTransport {
-	return &retryTransport{
-		base:     base,
-		max:      max,
-		baseWait: time.Microsecond, // near-zero for fast tests
-		maxWait:  time.Millisecond,
-		rnd:      rand.New(rand.NewSource(42)), //nolint:gosec
-	}
-}
-
-func makeRequest(t *testing.T, body string) *http.Request {
-	t.Helper()
-	var reqBody io.Reader
-	if body != "" {
-		reqBody = strings.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, "http://example.com", reqBody)
-	if err != nil {
-		t.Fatalf("failed to build request: %v", err)
-	}
-	return req
-}
-
-func TestRetryTransport503ThenSuccess(t *testing.T) {
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{status: 503},
-			{status: 200},
-		},
-	}
-	rt := buildRetryTransport(fake, 3)
-	resp, err := rt.RoundTrip(makeRequest(t, ""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	if fake.calls != 2 {
-		t.Fatalf("expected 2 calls, got %d", fake.calls)
-	}
-}
-
-func TestRetryTransportExhausted(t *testing.T) {
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{status: 503},
-			{status: 503},
-			{status: 503},
-			{status: 503}, // 1 initial + 3 retries
-		},
-	}
-	rt := buildRetryTransport(fake, 3)
-	resp, err := rt.RoundTrip(makeRequest(t, ""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 503 {
-		t.Fatalf("expected final 503, got %d", resp.StatusCode)
-	}
-	if fake.calls != 4 {
-		t.Fatalf("expected 4 calls (1+3), got %d", fake.calls)
-	}
-}
-
-func TestRetryTransport404NoRetry(t *testing.T) {
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{status: 404},
-		},
-	}
-	rt := buildRetryTransport(fake, 3)
-	resp, err := rt.RoundTrip(makeRequest(t, ""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
-	}
-	if fake.calls != 1 {
-		t.Fatalf("expected exactly 1 call, got %d", fake.calls)
-	}
-}
-
-func TestRetryTransportNetworkError(t *testing.T) {
-	netErr := errors.New("dial tcp: connection refused")
-	fake := &fakeTransport{
-		responses: []fakeResponse{
-			{err: netErr},
-			{status: 200},
-		},
-	}
-	rt := buildRetryTransport(fake, 3)
-	resp, err := rt.RoundTrip(makeRequest(t, ""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	if fake.calls != 2 {
-		t.Fatalf("expected 2 calls, got %d", fake.calls)
-	}
-}
-
-func TestRetryTransportBodyReplay(t *testing.T) {
-	received := make([]string, 0, 2)
-	var callCount int
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		callCount++
-		b, _ := io.ReadAll(req.Body)
-		received = append(received, string(b))
-		if callCount == 1 {
-			return &http.Response{
-				StatusCode: 503,
-				Body:       io.NopCloser(strings.NewReader("")),
-				Header:     make(http.Header),
-			}, nil
-		}
-		return &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(strings.NewReader("ok")),
-			Header:     make(http.Header),
-		}, nil
-	})
-	rt := buildRetryTransport(transport, 3)
-	req := makeRequest(t, "hello-body")
-	resp, err := rt.RoundTrip(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	if len(received) != 2 {
-		t.Fatalf("expected 2 body reads, got %d", len(received))
-	}
-	for i, r := range received {
-		if r != "hello-body" {
-			t.Fatalf("attempt %d: body = %q, want %q", i+1, r, "hello-body")
-		}
-	}
-}
-
-func TestRetryTransportRetryAfterHeader(t *testing.T) {
-	var callCount int
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		callCount++
-		status := 200
-		if callCount == 1 {
-			status = 429
-		}
-		resp := &http.Response{
-			StatusCode: status,
-			Body:       io.NopCloser(strings.NewReader("")),
-			Header:     make(http.Header),
-		}
-		if callCount == 1 {
-			resp.Header.Set("Retry-After", "0") // 0s — exercises the parse path without adding delay
-		}
-		return resp, nil
-	})
-	rt := buildRetryTransport(transport, 3)
-	resp, err := rt.RoundTrip(makeRequest(t, ""))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-	if callCount != 2 {
-		t.Fatalf("expected 2 calls, got %d", callCount)
-	}
-}
-
-func TestRetryTransportContextCancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // pre-cancelled: base.RoundTrip returns context.Canceled immediately
-
-	var callCount int
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		callCount++
-		return nil, req.Context().Err()
-	})
-	rt := buildRetryTransport(transport, 3)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
-	_, err := rt.RoundTrip(req)
-
-	if err != context.Canceled {
-		t.Fatalf("expected context.Canceled, got %v", err)
-	}
-	if callCount != 1 {
-		t.Fatalf("expected exactly 1 attempt with cancelled context, got %d", callCount)
-	}
-}
-
-func TestBackoffDelay(t *testing.T) {
-	rnd := rand.New(rand.NewSource(0)) //nolint:gosec
-	base := 500 * time.Millisecond
-	max := 30 * time.Second
-
-	for attempt := 0; attempt <= 10; attempt++ {
-		d := backoffDelay(attempt, base, max, rnd)
-		if d < 0 {
-			t.Fatalf("attempt %d: negative delay %v", attempt, d)
-		}
-		if d > max {
-			t.Fatalf("attempt %d: delay %v exceeds max %v", attempt, d, max)
-		}
-	}
-}
-
-func TestBackoffDelayOverflowGuard(t *testing.T) {
-	rnd := rand.New(rand.NewSource(0)) //nolint:gosec
-	// Very large attempt should not panic or overflow.
-	d := backoffDelay(200, 500*time.Millisecond, 30*time.Second, rnd)
-	if d < 0 || d > 30*time.Second {
-		t.Fatalf("overflow guard failed: d = %v", d)
-	}
-}
-
-func TestBackoffDelayNegativeAttempt(t *testing.T) {
-	rnd := rand.New(rand.NewSource(0)) //nolint:gosec
-	d := backoffDelay(-1, 500*time.Millisecond, 30*time.Second, rnd)
-	if d < 0 {
-		t.Fatalf("negative attempt should yield non-negative delay, got %v", d)
-	}
-}
 
 func TestResolveHTTPRetries(t *testing.T) {
 	t.Run("positive flag wins", func(t *testing.T) {
@@ -287,7 +17,7 @@ func TestResolveHTTPRetries(t *testing.T) {
 		}
 	})
 
-	t.Run("flag 1 disables retries effectively", func(t *testing.T) {
+	t.Run("flag 1 means 1 retry", func(t *testing.T) {
 		if got := resolveHTTPRetries(1); got != 1 {
 			t.Fatalf("resolveHTTPRetries(1) = %d, want 1", got)
 		}
@@ -406,12 +136,12 @@ func TestWithHTTPRetryRoundTrip(t *testing.T) {
 }
 
 func TestApplyHTTPRetry(t *testing.T) {
-	t.Run("wraps transport when n > 0", func(t *testing.T) {
+	t.Run("wraps with retryablehttp transport when n > 0", func(t *testing.T) {
 		ctx := withHTTPRetry(context.Background(), 3)
 		client := &http.Client{}
 		applyHTTPRetry(ctx, client)
-		if _, ok := client.Transport.(*retryTransport); !ok {
-			t.Fatalf("expected Transport to be *retryTransport, got %T", client.Transport)
+		if _, ok := client.Transport.(*retryablehttp.RoundTripper); !ok {
+			t.Fatalf("expected Transport to be *retryablehttp.RoundTripper, got %T", client.Transport)
 		}
 	})
 
@@ -423,7 +153,3 @@ func TestApplyHTTPRetry(t *testing.T) {
 		}
 	})
 }
-
-// Ensure roundTripFunc satisfies http.RoundTripper.
-var _ http.RoundTripper = roundTripFunc(nil)
-
