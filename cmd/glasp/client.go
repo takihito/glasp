@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -127,7 +128,15 @@ func applyHTTPRetry(ctx context.Context, httpClient *http.Client) {
 	rc.RetryWaitMin = 500 * time.Millisecond
 	rc.RetryWaitMax = 30 * time.Second
 	rc.Logger = nil // suppress go-retryablehttp's default log output
-	// DefaultRetryPolicy retries 429, 5xx, and network errors; skips other 4xx.
+	// DefaultRetryPolicy retries 429, 5xx (except 501), and network errors.
+	// Surface the HTTP status code in the final error so callers can see why
+	// all retries were exhausted (e.g. "400 Bad Request" not just "giving up").
+	rc.ErrorHandler = func(resp *http.Response, err error, numTries int) (*http.Response, error) {
+		if err != nil {
+			return resp, fmt.Errorf("giving up after %d attempt(s): %w", numTries, err)
+		}
+		return resp, fmt.Errorf("giving up after %d attempt(s): %s", numTries, resp.Status)
+	}
 	*httpClient = *rc.StandardClient()
 }
 
