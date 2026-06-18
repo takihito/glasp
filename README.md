@@ -305,9 +305,9 @@ glasp provides a composite action to install and authenticate inside a GitHub Ac
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v0.3.0
+  - uses: takihito/glasp@v0.4.0
     with:
-      version: 'v0.3.0'
+      version: 'v0.4.0'
       auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
   - run: glasp push
 ```
@@ -319,9 +319,9 @@ Auth source priority: `--auth` flag → `GLASP_AUTH` env var → project cache
 If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `GLASP_DIR`):
 
 ```yaml
-- uses: takihito/glasp@v0.3.0
+- uses: takihito/glasp@v0.4.0
   with:
-    version: 'v0.3.0'
+    version: 'v0.4.0'
     auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json (optional)
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
@@ -349,7 +349,7 @@ steps:
         oauth2.googleapis.com:443
 
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v0.3.0
+  - uses: takihito/glasp@v0.4.0
     with:
       auth: ${{ secrets.GLASP_AUTH }}
   - run: glasp push
