@@ -5,9 +5,9 @@
 | Version | Supported          |
 |---------|--------------------|
 | Latest  | :white_check_mark: |
-| Older   | :x:                |
+| Older   | :warning:          |
 
-Only the latest minor release receives security updates.
+Only the latest minor release receives security updates. Older versions are not actively maintained and upgrading to the latest release is strongly recommended.
 
 ## Reporting a Vulnerability
 
