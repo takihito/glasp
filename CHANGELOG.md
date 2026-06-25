@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.4.0](https://github.com/takihito/glasp/compare/v0.3.0...v0.4.0) - 2026-06-25
+
+- build(deps): bump github/codeql-action from 4.36.0 to 4.36.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/99
+- fix(ci): change dependency-review egress-policy from block to audit by @takihito in https://github.com/takihito/glasp/pull/103
+- build(deps): bump google.golang.org/api from 0.280.0 to 0.283.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/98
+- build(deps): bump actions/checkout from 6.0.2 to 6.0.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/100
+- build(deps): bump Songmu/tagpr from 1.19.0 to 1.20.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/101
+- docs: update version references to v0.3.0 by @takihito in https://github.com/takihito/glasp/pull/104
+- refactor: restructure cmd/glasp and internal packages (Phase 1-6) by @takihito in https://github.com/takihito/glasp/pull/107
+- build(deps): bump golang.org/x/sys from 0.45.0 to 0.46.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/105
+- build(deps): bump github/codeql-action from 4.36.1 to 4.36.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/106
+- feat: add configurable HTTP timeout for Script API requests by @takihito in https://github.com/takihito/glasp/pull/108
+- build(deps): bump github.com/evanw/esbuild from 0.28.0 to 0.28.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/109
+- build(deps): bump google.golang.org/api from 0.283.0 to 0.284.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/110
+- feat: add configurable API retry with exponential backoff by @takihito in https://github.com/takihito/glasp/pull/111
+- refactor: replace hand-written retryTransport with go-retryablehttp by @takihito in https://github.com/takihito/glasp/pull/112
+- bump version to v0.4.0 by @takihito in https://github.com/takihito/glasp/pull/113
+- build(deps): bump actions/checkout from 6.0.3 to 7.0.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/114
+- build(deps): bump google.golang.org/api from 0.284.0 to 0.285.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/115
+
 ## [v0.3.0](https://github.com/takihito/glasp/compare/v0.2.12...v0.3.0) - 2026-06-02
 - bump version to v0.3.0 by @takihito in https://github.com/takihito/glasp/pull/94
 - implement OAuth PKCE by @takihito in https://github.com/takihito/glasp/pull/81
