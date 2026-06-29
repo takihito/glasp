@@ -210,7 +210,7 @@ GitHub Release の artifact は immutable（変更不可）であるため、`ve
 より厳密なサプライチェーン管理が必要な場合は、コミット SHA で Action 自体を固定することもできます：
 
 ```yaml
-- uses: takihito/glasp@2e8a034c24f41be86999f301677f323824bcf057 # v0.3.0
+- uses: takihito/glasp@b6beddb54b5d4887e7bf4d8fd4647cecd885d576 # v0.4.0
   with:
     version: 'v0.3.0'
 ```

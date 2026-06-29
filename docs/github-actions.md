@@ -208,7 +208,7 @@ GitHub Release artifacts are immutable, so pinning `version` guarantees the exac
 You can also pin the action itself by commit SHA for stricter supply-chain control:
 
 ```yaml
-- uses: takihito/glasp@2e8a034c24f41be86999f301677f323824bcf057 # v0.3.0
+- uses: takihito/glasp@b6beddb54b5d4887e7bf4d8fd4647cecd885d576 # v0.4.0
   with:
     version: 'v0.3.0'
 ```
