@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.4.1](https://github.com/takihito/glasp/compare/v0.4.0...v0.4.1) - 2026-06-29
+
+- docs: update commit hash pinning to v0.4.0 by @takihito in https://github.com/takihito/glasp/pull/116
+
 ## [v0.4.0](https://github.com/takihito/glasp/compare/v0.3.0...v0.4.0) - 2026-06-25
 
 - build(deps): bump github/codeql-action from 4.36.0 to 4.36.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/99
