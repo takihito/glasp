@@ -39,7 +39,7 @@ func TestNewLogHandlerLevel(t *testing.T) {
 			// kong's enum tag rejects unknown values before newLogHandler
 			// runs, but the fallback branch must still behave like info.
 			level:    "unknown",
-			enabled:  []slog.Level{slog.LevelInfo},
+			enabled:  []slog.Level{slog.LevelInfo, slog.LevelWarn, slog.LevelError},
 			disabled: []slog.Level{slog.LevelDebug},
 		},
 	}
