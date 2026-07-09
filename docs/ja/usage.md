@@ -182,6 +182,38 @@ GLASP_NO_RETRIES=1 glasp push
 }
 ```
 
+## ログ
+
+glasp は診断ログ（警告・フォールバック通知・デバッグトレース）を構造化された形式で **stderr** に出力します。コマンドの実行結果（`Pulled project ...` など）は通常の出力であり、これらの設定の影響を受けません。
+
+### オプション
+
+- `--log-level` フラグ / `GLASP_LOG_LEVEL` 環境変数 — 最小レベル: `debug`、`info`（デフォルト）、`warn`、`error`
+- `--log-format` フラグ / `GLASP_LOG_FORMAT` 環境変数 — 出力形式: `text`（デフォルト）または `json`
+
+```bash
+# OAuth フローの進行状況などデバッグトレースを表示
+glasp login --log-level debug
+
+# 機械可読な JSON ログを出力（CI で便利）
+GLASP_LOG_FORMAT=json glasp push
+
+# 警告を抑制しエラーのみ表示
+glasp pull --log-level error
+```
+
+出力例:
+
+```
+# text（デフォルト）
+time=2026-07-09T10:00:00.000+09:00 level=WARN msg="failed to load .glasp/config.json; using default timeout" default=3m0s
+
+# json
+{"time":"2026-07-09T10:00:00+09:00","level":"WARN","msg":"failed to load .glasp/config.json; using default timeout","default":"3m0s"}
+```
+
+> **注意:** OAuth ログインの進行状況メッセージ（state 検証・認可コード受信など）は `debug` レベルで記録され、デフォルトでは表示されません。ブラウザを起動できない場合に開くべき URL など、操作に必須の案内はログレベルに関係なく常に表示されます。
+
 ## 設定
 
 ### .clasp.json
