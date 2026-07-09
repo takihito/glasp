@@ -2,7 +2,7 @@ package transform
 
 import (
 	"bytes"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -132,18 +132,21 @@ func TestEnsureWithinOutDir(t *testing.T) {
 
 func TestWarnImportExport(t *testing.T) {
 	var buf bytes.Buffer
-	orig := log.Writer()
-	log.SetOutput(&buf)
-	t.Cleanup(func() { log.SetOutput(orig) })
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(orig) })
 
 	source := "import foo from './foo'\nconst a = 1\nexport function bar() {}\n// export ignored\n"
 	warnImportExport("src/Main.ts", source)
 
 	output := buf.String()
-	if !strings.Contains(output, "src/Main.ts:1") {
+	if !strings.Contains(output, "file=src/Main.ts") {
+		t.Fatalf("expected warning for src/Main.ts, got: %s", output)
+	}
+	if !strings.Contains(output, "line=1") {
 		t.Fatalf("expected warning for line 1, got: %s", output)
 	}
-	if !strings.Contains(output, "src/Main.ts:3") {
+	if !strings.Contains(output, "line=3") {
 		t.Fatalf("expected warning for line 3, got: %s", output)
 	}
 }

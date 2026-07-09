@@ -2,13 +2,12 @@ package transform
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/takihito/glasp/internal/syncer"
 
@@ -262,8 +261,7 @@ func logConverted(srcPath, outDir, targetPath string) {
 		relTarget = targetPath
 	}
 	relTarget = filepath.ToSlash(relTarget)
-	timestamp := time.Now().Format(time.RFC3339)
-	log.Printf("Converted %s -> %s at %s", srcPath, relTarget, timestamp)
+	slog.Info("converted file", "src", srcPath, "dest", relTarget)
 }
 
 func warnImportExport(localPath, source string) {
@@ -300,7 +298,7 @@ func warnImportExport(localPath, source string) {
 			continue
 		}
 		lineNo := idx + 1
-		log.Printf("Warning: import/export detected in %s:%d", localPath, lineNo)
+		slog.Warn("import/export detected", "file", localPath, "line", lineNo)
 	}
 }
 

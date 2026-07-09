@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,7 +108,7 @@ func SaveClaspConfig(dir string, cfg *ClaspConfig) error {
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", filePath, err)
 	} else {
-		log.Printf("Created clasp config file: %s", filePath)
+		slog.Info("created clasp config file", "path", filePath)
 	}
 	return nil
 }

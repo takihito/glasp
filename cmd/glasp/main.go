@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -101,6 +102,8 @@ func (rc *runContext) archiveMeta() runArchiveMeta {
 // CLI is the main command-line interface structure for glasp.
 type CLI struct {
 	Dir              string              `name:"dir" short:"C" env:"GLASP_DIR" help:"Change to this directory before executing any command."`
+	LogLevel         string              `name:"log-level" env:"GLASP_LOG_LEVEL" enum:"debug,info,warn,error" default:"info" help:"Minimum level for diagnostic logs on stderr (debug|info|warn|error)."`
+	LogFormat        string              `name:"log-format" env:"GLASP_LOG_FORMAT" enum:"text,json" default:"text" help:"Diagnostic log format (text|json)."`
 	Timeout          int                 `name:"timeout" env:"GLASP_TIMEOUT" help:"HTTP timeout for Script API requests in seconds. 0 = use .glasp/config.json value or default (180s)."`
 	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
 	MaxRetries       int                 `name:"max-retries" env:"GLASP_MAX_RETRIES" help:"Max retry attempts for transient Script API failures (5xx/429/network). Applies only to idempotent commands (push, pull, list-deployments, clone). 0 = use .glasp/config.json value or default (3)."`
@@ -136,9 +139,11 @@ func main() {
 	// re-parsing os.Args ourselves. kong.Parse exits the process on a parse
 	// error, so the selection is always valid here.
 	commandName := selectedCommandName(parsed)
+	slog.SetDefault(slog.New(newLogHandler(stderr, cli.LogLevel, cli.LogFormat)))
 	if dir := strings.TrimSpace(cli.Dir); dir != "" {
 		if err := os.Chdir(dir); err != nil {
-			log.Fatalf("Error: failed to change directory to %q: %v", dir, err)
+			fmt.Fprintf(stderr, "Error: failed to change directory to %q: %v\n", dir, err)
+			os.Exit(1)
 		}
 	}
 	// retryableCommands lists the commands that may safely retry transient
@@ -158,8 +163,31 @@ func main() {
 	err := parsed.Run(rc)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
+}
+
+// newLogHandler builds the slog handler for diagnostic logs. User-facing
+// command output stays on the stdout/stderr writers via fmt and is never
+// filtered by the log level.
+func newLogHandler(w io.Writer, level, format string) slog.Handler {
+	var lvl slog.Level
+	switch level {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo
+	}
+	opts := &slog.HandlerOptions{Level: lvl}
+	if format == "json" {
+		return slog.NewJSONHandler(w, opts)
+	}
+	return slog.NewTextHandler(w, opts)
 }
 
 // resolveHTTPTimeout returns the HTTP timeout to use for Script API requests.
@@ -177,7 +205,8 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 	case flagSeconds < 0:
 		// 0 is the documented "unset" sentinel; a negative value is invalid
 		// input. Warn so a mistaken --timeout/GLASP_TIMEOUT is visible.
-		log.Printf("Warning: --timeout/GLASP_TIMEOUT value %d is negative and ignored; using .glasp/config.json value or default (%s).", flagSeconds, defaultHTTPTimeout)
+		slog.Warn("--timeout/GLASP_TIMEOUT value is negative and ignored; using .glasp/config.json value or default",
+			"value", flagSeconds, "default", defaultHTTPTimeout.String())
 	default:
 		// flagSeconds == 0 is the "unset" case: kong leaves an unset int flag
 		// at its zero value, so 0 cannot mean a real timeout. Fall through to
@@ -192,12 +221,14 @@ func resolveHTTPTimeout(flagSeconds int, noTimeout bool) time.Duration {
 			// malformed/unreadable (a missing file yields a zero-value config).
 			// Warn instead of silently honoring the default so a timeoutSeconds
 			// typo is visible to the user rather than ignored.
-			log.Printf("Warning: failed to load .glasp/config.json; using default timeout (%s): %v", defaultHTTPTimeout, err)
+			slog.Warn("failed to load .glasp/config.json; using default timeout",
+				"default", defaultHTTPTimeout.String(), "error", err)
 		case glaspCfg.TimeoutSeconds > 0:
 			return time.Duration(glaspCfg.TimeoutSeconds) * time.Second
 		case glaspCfg.TimeoutSeconds < 0:
 			// Negative seconds are invalid; warn rather than silently default.
-			log.Printf("Warning: timeoutSeconds in .glasp/config.json is negative (%d) and ignored; using default timeout (%s).", glaspCfg.TimeoutSeconds, defaultHTTPTimeout)
+			slog.Warn("timeoutSeconds in .glasp/config.json is negative and ignored; using default timeout",
+				"value", glaspCfg.TimeoutSeconds, "default", defaultHTTPTimeout.String())
 		}
 	}
 	return defaultHTTPTimeout
@@ -212,7 +243,8 @@ func resolveHTTPRetries(flag int) int {
 	case flag > 0:
 		return flag
 	case flag < 0:
-		log.Printf("Warning: --max-retries/GLASP_MAX_RETRIES value %d is negative and ignored; using .glasp/config.json value or default (%d).", flag, defaultHTTPRetries)
+		slog.Warn("--max-retries/GLASP_MAX_RETRIES value is negative and ignored; using .glasp/config.json value or default",
+			"value", flag, "default", defaultHTTPRetries)
 	default:
 		// flag == 0 is the "unset" case. Fall through to config/default.
 	}
@@ -221,11 +253,13 @@ func resolveHTTPRetries(flag int) int {
 		glaspCfg, err := config.LoadGlaspConfig(projectRoot)
 		switch {
 		case err != nil:
-			log.Printf("Warning: failed to load .glasp/config.json; using default retries (%d): %v", defaultHTTPRetries, err)
+			slog.Warn("failed to load .glasp/config.json; using default retries",
+				"default", defaultHTTPRetries, "error", err)
 		case glaspCfg.MaxRetries > 0:
 			return glaspCfg.MaxRetries
 		case glaspCfg.MaxRetries < 0:
-			log.Printf("Warning: maxRetries in .glasp/config.json is negative (%d) and ignored; using default retries (%d).", glaspCfg.MaxRetries, defaultHTTPRetries)
+			slog.Warn("maxRetries in .glasp/config.json is negative and ignored; using default retries",
+				"value", glaspCfg.MaxRetries, "default", defaultHTTPRetries)
 		}
 	}
 	return defaultHTTPRetries
@@ -253,7 +287,7 @@ func selectedCommandName(ctx *kong.Context) string {
 func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {
 	projectRoot, err := config.FindProjectRoot()
 	if err != nil {
-		log.Printf("Warning: failed to resolve project root for history: %v", err)
+		slog.Warn("failed to resolve project root for history", "error", err)
 		return
 	}
 	if projectRoot == "" {
@@ -279,7 +313,7 @@ func recordRunHistory(args []string, commandName string, duration time.Duration,
 		},
 	}
 	if err := history.Append(projectRoot, entry); err != nil {
-		log.Printf("Warning: failed to append history entry: %v", err)
+		slog.Warn("failed to append history entry", "error", err)
 	}
 }
 

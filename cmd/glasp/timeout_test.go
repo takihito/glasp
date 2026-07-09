@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -142,19 +142,14 @@ func TestResolveHTTPTimeout(t *testing.T) {
 	})
 }
 
-// captureLog redirects the standard logger's output into a buffer for the
-// duration of fn and returns what was written.
+// captureLog redirects the default slog logger's output into a buffer for
+// the duration of fn and returns what was written.
 func captureLog(t *testing.T, fn func()) string {
 	t.Helper()
 	var buf bytes.Buffer
-	origOut := log.Writer()
-	origFlags := log.Flags()
-	log.SetOutput(&buf)
-	log.SetFlags(0)
-	defer func() {
-		log.SetOutput(origOut)
-		log.SetFlags(origFlags)
-	}()
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(orig)
 	fn()
 	return buf.String()
 }
