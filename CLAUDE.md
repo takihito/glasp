@@ -46,6 +46,14 @@ All CLI commands are defined in `cmd/glasp/main.go` as a single struct parsed by
 
 Archives live under `.glasp/archive/<scriptId>/<push|pull>/<timestamp>/` with `manifest.json`, `working/`, and (push only) `payload/` + `payloadIndex`.
 
+## Logging
+
+- Diagnostic logs use `log/slog` via the default logger (`slog.Warn(...)` etc.); the handler is configured once in `cmd/glasp/main.go` (`--log-level`/`GLASP_LOG_LEVEL`, `--log-format`/`GLASP_LOG_FORMAT`, output to stderr, default level info)
+- User-facing command output (results, login guidance) uses `fmt.Fprintf` on the injectable `stdout`/`stderr` writers and is never filtered by log level — do not move it to slog
+- Levels: Debug = OAuth flow progress; Info = notifications (file created/converted); Warn = recoverable fallbacks; Error = failures surfaced through logs
+- Never log tokens, authorization codes, or other secrets; log lengths or masked values instead
+- Tests capture logs by swapping the default logger (`slog.SetDefault` with a `TextHandler` writing to a buffer; see `captureLog` in `cmd/glasp/timeout_test.go`)
+
 ## Key Conventions
 
 - Language: Go (latest stable), standard project layout (`cmd/`, `internal/`)

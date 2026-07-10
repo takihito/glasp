@@ -181,6 +181,38 @@ You can also set a project-wide value in `.glasp/config.json`:
 }
 ```
 
+## Logging
+
+glasp writes diagnostic logs (warnings, fallback notices, debug traces) to **stderr** in a structured format. Command results (e.g. `Pulled project ...`) are regular output and are not affected by these settings.
+
+### Options
+
+- `--log-level` flag / `GLASP_LOG_LEVEL` environment variable — minimum level: `debug`, `info` (default), `warn`, or `error`
+- `--log-format` flag / `GLASP_LOG_FORMAT` environment variable — output format: `text` (default) or `json`
+
+```bash
+# Show OAuth flow progress and other debug traces
+glasp login --log-level debug
+
+# Emit machine-readable JSON logs (useful in CI)
+GLASP_LOG_FORMAT=json glasp push
+
+# Suppress warnings, show errors only
+glasp pull --log-level error
+```
+
+Example output:
+
+```
+# text (default)
+time=2026-07-09T10:00:00.000+09:00 level=WARN msg="failed to load .glasp/config.json; using default timeout" default=3m0s
+
+# json
+{"time":"2026-07-09T10:00:00+09:00","level":"WARN","msg":"failed to load .glasp/config.json; using default timeout","default":"3m0s"}
+```
+
+> **Note:** OAuth login progress messages (state validation, authorization code receipt) are logged at `debug` level and hidden by default. Essential instructions — such as the URL to open when the browser cannot be launched — are always printed regardless of the log level.
+
 ## Configuration
 
 ### .clasp.json

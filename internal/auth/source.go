@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -129,12 +129,13 @@ func buildClientFromPayload(ctx context.Context, payload *authFilePayload, sourc
 			if strings.TrimSpace(token.AccessToken) == "" {
 				return nil, fmt.Errorf("failed to refresh token from %s: %w", source, refreshErr)
 			}
-			log.Printf("Warning: failed to refresh token from %s, falling back to token.access_token: %v", source, refreshErr)
+			slog.Warn("failed to refresh token; falling back to token.access_token",
+				"source", source, "error", refreshErr)
 		} else {
 			token = mergeRefreshedToken(token, refreshed)
 			if persistPath != "" {
 				if err := persistAuthToken(persistPath, token); err != nil {
-					log.Printf("Warning: failed to persist refreshed token to %s: %v", persistPath, err)
+					slog.Warn("failed to persist refreshed token", "path", persistPath, "error", err)
 				}
 			}
 		}

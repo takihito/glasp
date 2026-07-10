@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -163,7 +163,7 @@ func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
 	p.mu.Unlock()
 
 	if err := persistAuthToken(p.authPath, token); err != nil {
-		log.Printf("Warning: failed to persist refreshed token to %s: %v", p.authPath, err)
+		slog.Warn("failed to persist refreshed token", "path", p.authPath, "error", err)
 	} else {
 		p.mu.Lock()
 		p.lastSnapshot = snapshot

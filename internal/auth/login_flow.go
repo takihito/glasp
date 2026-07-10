@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -22,8 +22,10 @@ import (
 // and the user can open the printed URL manually.
 func openBrowser(url string) {
 	if err := browser.Start(url); err != nil {
-		log.Printf("Failed to open browser: %v", err)
-		log.Printf("Please manually open your browser and go to: %s", url)
+		slog.Warn("failed to open browser", "error", err)
+		// The user cannot proceed without this URL, so it goes to the
+		// user-facing writer rather than the level-filtered logger.
+		fmt.Fprintf(stdout, "Please manually open your browser and go to: %s\n", url)
 	}
 }
 
@@ -94,7 +96,7 @@ func LoginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 func clientFromCachedToken(ctx context.Context, config *oauth2.Config, cacheFile string) (client *http.Client, ok bool) {
 	token, _, _, loadErr := loadToken(cacheFile)
 	if loadErr != nil {
-		log.Printf("No cached token found or failed to load: %v", loadErr)
+		slog.Debug("no cached token found or failed to load", "error", loadErr)
 		return nil, false
 	}
 	// config.TokenSource automatically refreshes the token if it's expired
@@ -102,13 +104,13 @@ func clientFromCachedToken(ctx context.Context, config *oauth2.Config, cacheFile
 	tokenSource := config.TokenSource(ctx, token)
 	freshToken, err := tokenSource.Token()
 	if err != nil {
-		log.Printf("Cached token or refresh token is invalid, proceeding with full OAuth flow: %v", err)
+		slog.Debug("cached token or refresh token is invalid; proceeding with full OAuth flow", "error", err)
 		return nil, false
 	}
 	// Save the token back to cache in case it was refreshed.
 	if freshToken.AccessToken != token.AccessToken {
 		if saveErr := saveToken(cacheFile, freshToken); saveErr != nil {
-			log.Printf("Warning: Failed to save refreshed token: %v", saveErr)
+			slog.Warn("failed to save refreshed token", "error", saveErr)
 		}
 	}
 	fmt.Fprintf(stdout, "Using cached or refreshed token from %s\n", cacheFile)
@@ -139,11 +141,11 @@ func startCallbackServer(listener net.Listener, state *oauthState) (*http.Server
 		if err := state.validate(incomingState); err != nil {
 			errmsg := "Invalid state in response."
 			http.Error(w, errmsg, http.StatusBadRequest)
-			log.Println(errmsg)
+			slog.Warn("invalid state in OAuth callback response", "error", err)
 			sendResult(authCodeResult{err: err})
 			return
 		}
-		log.Printf("Valid state token received")
+		slog.Debug("valid state token received")
 		code := r.URL.Query().Get("code")
 		if code == "" {
 			errmsg := "No code in response. "
@@ -151,11 +153,12 @@ func startCallbackServer(listener net.Listener, state *oauthState) (*http.Server
 				errmsg += fmt.Sprintf("Google returned error: %s", errParam)
 			}
 			http.Error(w, errmsg, http.StatusBadRequest)
-			log.Println(errmsg)
+			slog.Warn("no authorization code in OAuth callback response",
+				"google_error", r.URL.Query().Get("error"))
 			sendResult(authCodeResult{err: fmt.Errorf("%s", errmsg)})
 			return
 		}
-		log.Printf("Received authorization code (length: %d)", len(code))
+		slog.Debug("received authorization code", "length", len(code))
 		fmt.Fprintf(w, "Authentication successful! You can close this tab.")
 		sendResult(authCodeResult{code: code})
 	})
@@ -163,7 +166,7 @@ func startCallbackServer(listener net.Listener, state *oauthState) (*http.Server
 	srv := &http.Server{Handler: mux}
 	go func() {
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-			log.Printf("listen error: %v\n", err)
+			slog.Error("OAuth callback server listen error", "error", err)
 			sendResult(authCodeResult{err: fmt.Errorf("listen: %w", err)})
 		}
 	}()
@@ -210,7 +213,7 @@ func loginWithCachePath(ctx context.Context, config *oauth2.Config, cacheFile st
 		defer cancel()
 		if message, isError := shutdownServerMessage(srv.Shutdown(shutdownCtx)); message != "" {
 			if isError {
-				log.Println(message)
+				slog.Error(message)
 			} else {
 				fmt.Fprintln(stdout, message)
 			}
