@@ -37,11 +37,11 @@ curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/l
 
 ```bash
 brew tap takihito/tap
-brew trust takihito/tap
+brew trust --formula takihito/tap/glasp
 brew install glasp
 ```
 
-> [takihito/tap](https://github.com/takihito/homebrew-tap) は未署名の tap のため `brew trust` が必要です。ビルド済みバイナリ（OAuth credentials 埋め込み済み）がインストールされます。
+> [takihito/tap](https://github.com/takihito/homebrew-tap) は非公式 tap のため `brew trust` が必要です。ビルド済みバイナリ（OAuth credentials 埋め込み済み）がインストールされます。
 
 ## go install
 
