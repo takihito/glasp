@@ -34,6 +34,16 @@ To change the install directory:
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
+## Homebrew (macOS / Linux)
+
+```bash
+brew tap takihito/tap
+brew trust --formula takihito/tap/glasp
+brew install glasp
+```
+
+> `brew trust` is required because [takihito/tap](https://github.com/takihito/homebrew-tap) is a non-official tap. Installs a pre-built binary with OAuth credentials embedded.
+
 ## go install
 
 ```bash
@@ -59,7 +69,7 @@ make install  # Build and install globally
 
 | Install method | Credentials |
 |---------------|-------------|
-| Quick Install (pre-built binaries) | Embedded, override with env vars |
+| Quick Install / Homebrew (pre-built binaries) | Embedded, override with env vars |
 | `go install` / source build | Env vars required |
 
 ```bash
