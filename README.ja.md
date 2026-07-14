@@ -43,6 +43,7 @@ export PATH="$HOME/.local/bin:$PATH"
 インストール先を変更する場合:
 
 ```bash
+# `GLASP_INSTALL_DIR` 環境変数を設定してからインストールスクリプトを実行してください。例: `/usr/local/bin` にインストールする場合:
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
@@ -54,7 +55,7 @@ brew trust --formula takihito/tap/glasp
 brew install glasp
 ```
 
-> [takihito/tap](https://github.com/takihito/homebrew-tap) は非公式 tap のため `brew trust` が必要です。ビルド済みバイナリ（OAuth 認証情報 埋め込み済み）がインストールされます。
+> [takihito/tap](https://github.com/takihito/homebrew-tap) は非公式 tap のため `brew trust` が必要です。
 
 ### go install
 
