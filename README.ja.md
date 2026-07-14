@@ -46,6 +46,16 @@ export PATH="$HOME/.local/bin:$PATH"
 curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
+### Homebrew（macOS / Linux）
+
+```bash
+brew tap takihito/tap
+brew trust --formula takihito/tap/glasp
+brew install glasp
+```
+
+> [takihito/tap](https://github.com/takihito/homebrew-tap) は非公式 tap のため `brew trust` が必要です。ビルド済みバイナリ（OAuth 認証情報 埋め込み済み）がインストールされます。
+
 ### go install
 
 ```bash
@@ -67,7 +77,7 @@ make install  # ビルドしてグローバルにインストール
 
 | インストール方法 | 認証情報 |
 |-----------------|---------|
-| クイックインストール（ビルド済みバイナリ） | 埋め込み済み、環境変数で上書き可能 |
+| クイックインストール / Homebrew（ビルド済みバイナリ） | 埋め込み済み、環境変数で上書き可能 |
 | `go install` / ソースビルド | 環境変数で指定が必要 |
 
 ```bash
