@@ -44,6 +44,7 @@ func (c *ClaspConfig) UnmarshalJSON(data []byte) error {
 	}
 	var arr []string
 	if err := json.Unmarshal(aux.ParentID, &arr); err == nil {
+		c.ParentID = ""
 		if len(arr) > 0 {
 			c.ParentID = arr[0]
 		}

@@ -162,6 +162,22 @@ func TestLoadClaspConfigParentIDFormats(t *testing.T) {
 	}
 }
 
+func TestClaspConfigUnmarshalReuseResetsParentID(t *testing.T) {
+	var cfg ClaspConfig
+	if err := json.Unmarshal([]byte(`{"scriptId": "sid", "parentId": "parent-1"}`), &cfg); err != nil {
+		t.Fatalf("first unmarshal failed: %v", err)
+	}
+	if cfg.ParentID != "parent-1" {
+		t.Fatalf("Expected ParentID \"parent-1\", got %q", cfg.ParentID)
+	}
+	if err := json.Unmarshal([]byte(`{"scriptId": "sid", "parentId": []}`), &cfg); err != nil {
+		t.Fatalf("second unmarshal failed: %v", err)
+	}
+	if cfg.ParentID != "" {
+		t.Errorf("Expected empty ParentID after unmarshaling empty array into reused struct, got %q", cfg.ParentID)
+	}
+}
+
 func TestClaspConfigPreservesExtraFields(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "glasp_config_extra_test_")
 	if err != nil {
