@@ -123,6 +123,45 @@ func TestClaspIgnore(t *testing.T) {
 	}
 }
 
+func TestLoadClaspConfigParentIDFormats(t *testing.T) {
+	testCases := []struct {
+		name     string
+		raw      string
+		expected string
+		wantErr  bool
+	}{
+		{"string parentId (clasp v3)", `{"scriptId": "sid", "parentId": "parent-123"}`, "parent-123", false},
+		{"array parentId (clasp v2)", `{"scriptId": "sid", "parentId": ["parent-123"]}`, "parent-123", false},
+		{"empty array parentId", `{"scriptId": "sid", "parentId": []}`, "", false},
+		{"missing parentId", `{"scriptId": "sid"}`, "", false},
+		{"invalid parentId type", `{"scriptId": "sid", "parentId": 123}`, "", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, ".clasp.json")
+			if err := os.WriteFile(configPath, []byte(tc.raw), 0644); err != nil {
+				t.Fatalf("Failed to write .clasp.json: %v", err)
+			}
+
+			cfg, err := LoadClaspConfig(tmpDir)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("LoadClaspConfig failed: %v", err)
+			}
+			if cfg.ParentID != tc.expected {
+				t.Errorf("Expected ParentID %q, got %q", tc.expected, cfg.ParentID)
+			}
+		})
+	}
+}
+
 func TestClaspConfigPreservesExtraFields(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "glasp_config_extra_test_")
 	if err != nil {

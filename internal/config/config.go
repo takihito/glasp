@@ -22,6 +22,36 @@ type ClaspConfig struct {
 	Extra     map[string]json.RawMessage `json:"-"`
 }
 
+// UnmarshalJSON accepts both clasp formats for parentId: a plain string
+// (clasp v3) and an array of strings (clasp v2, e.g. ["<driveFileId>"]).
+// When an array is given, the first element is used.
+func (c *ClaspConfig) UnmarshalJSON(data []byte) error {
+	type alias ClaspConfig
+	aux := struct {
+		ParentID json.RawMessage `json:"parentId"`
+		*alias
+	}{alias: (*alias)(c)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if len(aux.ParentID) == 0 {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(aux.ParentID, &s); err == nil {
+		c.ParentID = s
+		return nil
+	}
+	var arr []string
+	if err := json.Unmarshal(aux.ParentID, &arr); err == nil {
+		if len(arr) > 0 {
+			c.ParentID = arr[0]
+		}
+		return nil
+	}
+	return fmt.Errorf("parentId must be a string or an array of strings")
+}
+
 // claspConfigFileName is the name of the clasp configuration file.
 const claspConfigFileName = ".clasp.json"
 
