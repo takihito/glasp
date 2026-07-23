@@ -3,7 +3,7 @@ module github.com/takihito/glasp
 go 1.25.8
 
 require (
-	github.com/alecthomas/kong v1.15.0
+	github.com/alecthomas/kong v1.16.0
 	github.com/evanw/esbuild v0.28.1
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
