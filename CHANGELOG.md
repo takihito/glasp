@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.4.1](https://github.com/takihito/glasp/compare/v0.4.0...v0.4.1) - 2026-07-18
+## [v0.4.1](https://github.com/takihito/glasp/compare/v0.4.0...v0.4.1) - 2026-07-23
 
 - docs: update commit hash pinning to v0.4.0 by @takihito in https://github.com/takihito/glasp/pull/116
 - build(deps): bump actions/setup-go from 6.4.0 to 6.5.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/118
@@ -22,6 +22,11 @@ All notable changes to this project will be documented in this file.
 - build(deps): bump github/codeql-action to 4.37.0 and group future updates by @takihito in https://github.com/takihito/glasp/pull/138
 - build(deps): bump Songmu/tagpr from 1.20.0 to 1.20.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/139
 - fix: accept array-form parentId in .clasp.json for clasp v2 compatibility by @takihito in https://github.com/takihito/glasp/pull/140
+- build(deps): bump the codeql group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/143
+- build(deps): bump github.com/alecthomas/kong from 1.15.0 to 1.16.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/141
+- build(deps): bump google.golang.org/api from 0.288.0 to 0.289.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/142
+- build(deps): bump actions/setup-go from 6.5.0 to 7.0.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/144
+- build(deps): bump google.golang.org/grpc from 1.82.0 to 1.82.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/146
 
 ## [v0.4.0](https://github.com/takihito/glasp/compare/v0.3.0...v0.4.0) - 2026-06-25
 
