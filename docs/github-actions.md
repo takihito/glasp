@@ -69,9 +69,9 @@ Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and ad
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: takihito/glasp@v0.4.0
+  - uses: takihito/glasp@v0.5.0
     with:
-      version: 'v0.4.0'
+      version: 'v0.5.0'
 {% raw %}
       auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
 {% endraw %}
@@ -95,9 +95,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.4.0
+      - uses: takihito/glasp@v0.5.0
         with:
-          version: 'v0.4.0'
+          version: 'v0.5.0'
 {% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
 {% endraw %}
@@ -121,9 +121,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: takihito/glasp@v0.4.0
+      - uses: takihito/glasp@v0.5.0
         with:
-          version: 'v0.4.0'
+          version: 'v0.5.0'
 {% raw %}
           auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
 {% endraw %}
@@ -140,9 +140,9 @@ jobs:
 glasp automatically detects `.ts` files according to your `.clasp.json` settings and transpiles them via esbuild before pushing. No additional configuration is needed:
 
 ```yaml
-- uses: takihito/glasp@v0.4.0
+- uses: takihito/glasp@v0.5.0
   with:
-    version: 'v0.4.0'
+    version: 'v0.5.0'
 {% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
@@ -171,9 +171,9 @@ When `client-id` and `client-secret` are set, the action also exports `GLASP_CLI
 If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
 
 ```yaml
-- uses: takihito/glasp@v0.4.0
+- uses: takihito/glasp@v0.5.0
   with:
-    version: 'v0.4.0'
+    version: 'v0.5.0'
 {% raw %}
     auth: '${{ secrets.CLASPRC_JSON }}'
 {% endraw %}
@@ -198,9 +198,9 @@ You can also set it per-command with the `--dir` flag or the `GLASP_DIR` environ
 Specify an explicit version to make your workflow reproducible:
 
 ```yaml
-- uses: takihito/glasp@v0.4.0   # recommended: pin to a release tag
+- uses: takihito/glasp@v0.5.0   # recommended: pin to a release tag
   with:
-    version: 'v0.4.0'
+    version: 'v0.5.0'
 ```
 
 GitHub Release artifacts are immutable, so pinning `version` guarantees the exact same binary is installed on every run.
@@ -208,7 +208,7 @@ GitHub Release artifacts are immutable, so pinning `version` guarantees the exac
 You can also pin the action itself by commit SHA for stricter supply-chain control:
 
 ```yaml
-- uses: takihito/glasp@b6beddb54b5d4887e7bf4d8fd4647cecd885d576 # v0.4.0
+- uses: takihito/glasp@fe69b6400dd50345faf226f36e3acfac48c6c07c # v0.5.0
   with:
-    version: 'v0.4.0'
+    version: 'v0.5.0'
 ```
