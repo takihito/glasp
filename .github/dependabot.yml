@@ -22,10 +22,17 @@ updates:
       # updates (triggered by an advisory against one of these actions) are a
       # separate Dependabot mechanism that ignores it unless grouped
       # explicitly too, so both are declared here.
+      #
+      # When every reference shares a version, Dependabot may identify the
+      # bump under the root name "github/codeql-action" (no sub-path)
+      # instead of a per-action name — the wildcard alone won't match that,
+      # so the exact root name is listed too.
       codeql-action:
         patterns:
+          - "github/codeql-action"
           - "github/codeql-action/*"
       codeql-action-security:
         applies-to: security-updates
         patterns:
+          - "github/codeql-action"
           - "github/codeql-action/*"
