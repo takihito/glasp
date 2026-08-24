@@ -4,11 +4,28 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
     groups:
-      codeql:
+      # github/codeql-action ships init/analyze/upload-sarif/autobuild as one release;
+      # init writes a config file that analyze checks against its own running
+      # version, so bumping only one of them (as separate per-reference PRs
+      # would) leaves main with a mismatched pair and CodeQL analysis fails:
+      #   "Loaded a configuration file for version 'X', but running version 'Y'"
+      # Group every reference so they always move together in one PR. A group
+      # with no `applies-to` only covers scheduled version updates; security
+      # updates (triggered by an advisory against one of these actions) are a
+      # separate Dependabot mechanism that ignores it unless grouped
+      # explicitly too, so both are declared here.
+      codeql-action:
         patterns:
-          - "github/codeql-action*"
+          - "github/codeql-action/*"
+      codeql-action-security:
+        applies-to: security-updates
+        patterns:
+          - "github/codeql-action/*"
