@@ -19,46 +19,41 @@ jobs:
     env:
       SCRIPT_ID: ${{ secrets.GLASP_SMOKE_SCRIPT_ID }}
     steps:
-      - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
-        with:
-          egress-policy: block
-          allowed-endpoints: >
-            api.github.com:443
-            github.com:443
-            objects.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            script.googleapis.com:443
-            www.googleapis.com:443
-            oauth2.googleapis.com:443
-            azure.archive.ubuntu.com:80
-            archive.ubuntu.com:80
-            security.ubuntu.com:80
-            tuf-repo-cdn.sigstore.dev:443
-          # The three ubuntu.com entries above are for the Bullfrog step below:
-          # it unconditionally apt-get installs libnetfilter-queue-dev and
-          # nftables, which on GitHub-hosted runners resolves through the
-          # regional apt mirror over plain HTTP (port 80).
-          #
-          # tuf-repo-cdn.sigstore.dev is for the field-cage step's `cosign
-          # verify-blob` call below: cosign fetches the Sigstore TUF trusted
-          # root from there to verify the bundle format signature, even when
-          # verifying an already-downloaded bundle offline otherwise.
-
-      # Additional egress-monitoring layers, both in audit mode (log-only,
-      # never blocking): they observe the same traffic Harden Runner already
-      # allows/blocks above and give an independent second opinion on what
-      # this job actually calls out to.
-      - name: Bullfrog egress audit
-        uses: bullfrogsec/bullfrog@ebd3ce460ed3371d6fd751649fc1637ef0c21a18 # v0.11.0
-        with:
-          egress-policy: audit
-
+      # EXPERIMENT (temporary, do not merge as-is): reordered field-cage ->
+      # Bullfrog -> harden-runner, and harden-runner switched from block to
+      # audit with its allowlist commented out, to check how much of the
+      # job's traffic field-cage (placed first) actually observes when
+      # nothing blocks it or the tools after it from making calls. See
+      # https://github.com/takihito/glasp/actions/runs/32736134793 for the
+      # normal-order baseline.
       - name: field-cage egress audit
         uses: takihito/field-cage@1e55f85545b156b80df517807874c6e0a1361878 # v0.1.2
         with:
           version: v0.1.2
           mode: audit
+
+      - name: Bullfrog egress audit
+        uses: bullfrogsec/bullfrog@ebd3ce460ed3371d6fd751649fc1637ef0c21a18 # v0.11.0
+        with:
+          egress-policy: audit
+
+      - name: Harden the runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+          # allowed-endpoints temporarily commented out for this experiment:
+          # allowed-endpoints: >
+          #   api.github.com:443
+          #   github.com:443
+          #   objects.githubusercontent.com:443
+          #   release-assets.githubusercontent.com:443
+          #   script.googleapis.com:443
+          #   www.googleapis.com:443
+          #   oauth2.googleapis.com:443
+          #   azure.archive.ubuntu.com:80
+          #   archive.ubuntu.com:80
+          #   security.ubuntu.com:80
+          #   tuf-repo-cdn.sigstore.dev:443
 
       - name: Verify required secrets are configured
         env:
