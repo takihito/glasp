@@ -34,10 +34,16 @@ jobs:
             azure.archive.ubuntu.com:80
             archive.ubuntu.com:80
             security.ubuntu.com:80
+            tuf-repo-cdn.sigstore.dev:443
           # The three ubuntu.com entries above are for the Bullfrog step below:
           # it unconditionally apt-get installs libnetfilter-queue-dev and
           # nftables, which on GitHub-hosted runners resolves through the
           # regional apt mirror over plain HTTP (port 80).
+          #
+          # tuf-repo-cdn.sigstore.dev is for the field-cage step's `cosign
+          # verify-blob` call below: cosign fetches the Sigstore TUF trusted
+          # root from there to verify the bundle format signature, even when
+          # verifying an already-downloaded bundle offline otherwise.
 
       # Additional egress-monitoring layers, both in audit mode (log-only,
       # never blocking): they observe the same traffic Harden Runner already
