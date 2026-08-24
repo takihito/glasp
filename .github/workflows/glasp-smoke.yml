@@ -32,6 +32,21 @@ jobs:
             www.googleapis.com:443
             oauth2.googleapis.com:443
 
+      # Additional egress-monitoring layers, both in audit mode (log-only,
+      # never blocking): they observe the same traffic Harden Runner already
+      # allows/blocks above and give an independent second opinion on what
+      # this job actually calls out to.
+      - name: Bullfrog egress audit
+        uses: bullfrogsec/bullfrog@ebd3ce460ed3371d6fd751649fc1637ef0c21a18 # v0.11.0
+        with:
+          egress-policy: audit
+
+      - name: field-cage egress audit
+        uses: takihito/field-cage@1e55f85545b156b80df517807874c6e0a1361878 # v0.1.2
+        with:
+          version: v0.1.2
+          mode: audit
+
       - name: Verify required secrets are configured
         env:
           _AUTH: ${{ secrets.GLASP_AUTH }}
@@ -76,3 +91,10 @@ jobs:
       - name: glasp push
         working-directory: ${{ steps.workspace.outputs.dir }}
         run: glasp push
+
+      - name: field-cage audit report
+        if: always()
+        uses: takihito/field-cage/report@1e55f85545b156b80df517807874c6e0a1361878 # v0.1.2
+        with:
+          version: v0.1.2
+          fail-on-deny: false
