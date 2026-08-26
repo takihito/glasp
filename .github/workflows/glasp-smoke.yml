@@ -55,9 +55,9 @@ jobs:
           egress-policy: audit
 
       - name: field-cage egress audit
-        uses: takihito/field-cage@1e55f85545b156b80df517807874c6e0a1361878 # v0.1.2
+        uses: takihito/field-cage@be622c9843a30bb3bce0be50b545291353af40dd # v0.1.4
         with:
-          version: v0.1.2
+          version: v0.1.4
           mode: audit
 
       - name: Verify required secrets are configured
@@ -107,7 +107,7 @@ jobs:
 
       - name: field-cage audit report
         if: always()
-        uses: takihito/field-cage/report@1e55f85545b156b80df517807874c6e0a1361878 # v0.1.2
+        uses: takihito/field-cage/report@be622c9843a30bb3bce0be50b545291353af40dd # v0.1.4
         with:
-          version: v0.1.2
+          version: v0.1.4
           fail-on-deny: false
