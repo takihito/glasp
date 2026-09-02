@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.1](https://github.com/takihito/glasp/compare/v0.5.0...v0.5.1) - 2026-09-02
+
+- docs: update version references from v0.4.0 to v0.5.0 by @takihito in https://github.com/takihito/glasp/pull/147
+- build(deps): bump the codeql group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/150
+- build(deps): bump ossf/scorecard-action from 2.4.3 to 2.4.4 by @dependabot[bot] in https://github.com/takihito/glasp/pull/151
+- build(deps): bump actions/checkout from 7.0.0 to 7.0.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/152
+- build(deps): bump google.golang.org/api from 0.289.0 to 0.291.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/153
+- build(deps): bump google.golang.org/api from 0.291.0 to 0.292.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/154
+- build(deps): bump step-security/harden-runner from 2.20.0 to 2.21.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/159
+- chore: align dependabot codeql-action grouping with field-cage by @takihito in https://github.com/takihito/glasp/pull/161
+- build(deps): bump github.com/alecthomas/kong from 1.16.0 to 1.16.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/157
+- ci: add bullfrog and field-cage egress audit to glasp smoke test by @takihito in https://github.com/takihito/glasp/pull/163
+- fix: allow apt mirrors in harden-runner so Bullfrog's apt install works by @takihito in https://github.com/takihito/glasp/pull/164
+- fix: allow sigstore TUF CDN in harden-runner for cosign verify-blob by @takihito in https://github.com/takihito/glasp/pull/165
+- build(deps): bump google.golang.org/api from 0.292.0 to 0.293.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/158
+- build(deps): bump github.com/evanw/esbuild from 0.28.1 to 0.28.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/160
+- build(deps): bump the codeql-action group across 1 directory with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/162
+- ci: bump field-cage to v0.1.4 by @takihito in https://github.com/takihito/glasp/pull/166
+- ci: add manual audit-mode and native-firewall variants of glasp smoke workflow by @takihito in https://github.com/takihito/glasp/pull/167
+- build(deps): bump google.golang.org/api from 0.293.0 to 0.294.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/168
+- build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/169
+- build(deps): bump bullfrogsec/bullfrog from 0.11.0 to 0.11.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/171
+
 ## [v0.4.1](https://github.com/takihito/glasp/compare/v0.4.0...v0.4.1) - 2026-07-23
 
 - docs: update commit hash pinning to v0.4.0 by @takihito in https://github.com/takihito/glasp/pull/116
