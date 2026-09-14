@@ -52,7 +52,7 @@ jobs:
           egress-policy: audit
 
       - name: field-cage egress audit
-        uses: takihito/field-cage@be622c9843a30bb3bce0be50b545291353af40dd # v0.1.4
+        uses: takihito/field-cage@dc426543b9163df92f3010f9ead524ee2023eade # v0.1.5
         with:
           version: v0.1.4
           mode: audit
