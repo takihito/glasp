@@ -154,6 +154,16 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve rootDir: %w", err)
 	}
+	// .glasp/ holds internal data (tokens, archives, config) and must never
+	// be collected, independent of rootDir/Ignore: a symlink whose target
+	// resolves inside it (e.g. a tracked "Code.gs" pointing at
+	// ".glasp/access.json") would otherwise pass the rootDir containment
+	// check below and upload the token as if it were source code. Resolved
+	// once here; ".glasp" need not exist yet (resolveExisting handles that).
+	resolvedGlaspDir, err := resolveExisting(filepath.Join(opts.ProjectRoot, ".glasp"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve .glasp directory: %w", err)
+	}
 	fileExtensions := normalizeFileExtensions(opts.FileExtensions)
 	sameContentAndProjectRoot := filepath.Clean(contentDir) == filepath.Clean(opts.ProjectRoot)
 
@@ -213,10 +223,7 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 			return err
 		}
 		relToRoot = filepath.ToSlash(relToRoot)
-		if opts.Ignore != nil && opts.Ignore.Matches(relToRoot) {
-			reportSkip(opts.OnSkip, relToRoot, SkipReasonIgnored)
-			return nil
-		}
+
 		// A symlink entry here is usually a symlinked file: for a symlink
 		// found *inside* contentDir, filepath.WalkDir never descends into it
 		// even when it points at a directory (its DirEntry reports
@@ -225,36 +232,68 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 		// exception is currentPath itself being contentDir (WalkDir does
 		// follow a symlinked root's *own* entry, though still without
 		// descending into it) — a directory symlink can reach this branch,
-		// which is why the message below checks the target's type rather
-		// than assuming "file".
-		//
-		// Symlinks are skipped by default: a project shared over a
-		// symlinked folder could otherwise let push silently read (and
-		// upload) a file reachable via a link pointing outside the project,
-		// e.g. a link to a secrets file or another user's home directory.
-		// --allow-symlinks / GLASP_ALLOW_SYMLINKS opts back in, but even then
-		// the link target must resolve inside contentDir.
-		if entry.Type()&fs.ModeSymlink != 0 {
-			// Resolve eagerly (even when not following the link) purely to
-			// report an accurate "file" vs "directory" in the skip message;
-			// a broken or unresolvable link falls back to generic wording
-			// rather than failing the walk when we weren't going to follow
-			// it anyway.
-			resolved, resolveErr := filepath.EvalSymlinks(currentPath)
-			var targetIsDir, targetStatOK bool
+		// which is why its type is resolved and checked before anything
+		// else: a directory has no extension to match against
+		// fileExtensions, so it must be handled here rather than falling
+		// into the candidacy check below (which would otherwise silently
+		// drop it, along with the only diagnostic that rootDir itself is a
+		// symlink and nothing will be collected from it).
+		isSymlink := entry.Type()&fs.ModeSymlink != 0
+		var resolved string
+		var targetIsDir, targetStatOK bool
+		var resolveErr error
+		if isSymlink {
+			resolved, resolveErr = filepath.EvalSymlinks(currentPath)
 			if resolveErr == nil {
 				if info, statErr := os.Stat(resolved); statErr == nil {
 					targetIsDir = info.IsDir()
 					targetStatOK = true
 				}
 			}
+		}
+		if isSymlink && targetIsDir {
+			// Directory symlinks are never followed, with or without
+			// --allow-symlinks (WalkDir doesn't descend into one, and this
+			// is the one case — the walk's own root — where that matters).
+			slog.Debug("skipping symlinked directory (directory symlinks are never followed, even with --allow-symlinks)", "path", relToRoot)
+			reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
+			return nil
+		}
 
+		// Determine candidacy — would this path ever be collected — before
+		// consulting .claspignore or validating a symlinked *file*. A path
+		// that was never going to be collected anyway (wrong extension, and
+		// not a .d.ts) must not be reported via OnSkip: otherwise "Skipped N
+		// file(s)" would count every non-matching file under an ignored
+		// directory (e.g. every file inside node_modules/), not just the
+		// ones a user might actually expect to see pushed. It also must not
+		// be symlink-validated: since it is never read, an unresolvable or
+		// escaping link target here poses no risk.
+		isDeclaration := strings.HasSuffix(strings.ToLower(relToRoot), ".d.ts")
+		fileType := fileTypeForPath(relToRoot, fileExtensions)
+		if !isDeclaration && fileType == "" {
+			return nil
+		}
+
+		if opts.Ignore != nil && opts.Ignore.Matches(relToRoot) {
+			reportSkip(opts.OnSkip, relToRoot, SkipReasonIgnored)
+			return nil
+		}
+		// Symlinked files are skipped by default: a project shared over a
+		// symlinked folder could otherwise let push silently read (and
+		// upload) a file reachable via a link pointing outside the project,
+		// e.g. a link to a secrets file or another user's home directory.
+		// --allow-symlinks / GLASP_ALLOW_SYMLINKS opts back in, but even then
+		// the link target must resolve inside contentDir and outside
+		// .glasp/ (a tracked file symlinked to .glasp/access.json would
+		// otherwise pass the rootDir containment check and upload the auth
+		// token as if it were source).
+		if isSymlink {
+			// Per-file detail is logged at debug level only — the one-line
+			// "Skipped N file(s)" summary is what's shown by default (see
+			// OnSkip/skipTracker in cmd/glasp).
 			if !opts.AllowSymlinks {
-				if targetIsDir {
-					slog.Warn("skipping symlinked directory (directory symlinks are never followed, even with --allow-symlinks)", "path", relToRoot)
-				} else {
-					slog.Warn("skipping symlinked file (use --allow-symlinks to include it)", "path", relToRoot)
-				}
+				slog.Debug("skipping symlinked file (use --allow-symlinks to include it)", "path", relToRoot)
 				reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
 				return nil
 			}
@@ -264,27 +303,24 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 			if !targetStatOK {
 				return fmt.Errorf("failed to stat symlink target for %s", relToRoot)
 			}
-			if targetIsDir {
-				slog.Warn("skipping symlinked directory (directory symlinks are never followed, even with --allow-symlinks)", "path", relToRoot)
-				reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
-				return nil
-			}
-			relToContentDir, err := filepath.Rel(resolvedContentDir, resolved)
+			within, err := isWithin(resolvedContentDir, resolved)
 			if err != nil {
 				return fmt.Errorf("invalid symlink target for %s: %w", relToRoot, err)
 			}
-			relToContentDir = filepath.ToSlash(relToContentDir)
-			if relToContentDir == ".." || strings.HasPrefix(relToContentDir, "../") {
+			if !within {
 				return fmt.Errorf("symlink %s resolves outside rootDir; refusing to follow it even with --allow-symlinks", relToRoot)
 			}
+			insideGlasp, err := isWithin(resolvedGlaspDir, resolved)
+			if err != nil {
+				return fmt.Errorf("invalid symlink target for %s: %w", relToRoot, err)
+			}
+			if insideGlasp {
+				return fmt.Errorf("symlink %s resolves inside .glasp/, which is never collected", relToRoot)
+			}
 		}
-		// Skip TypeScript declaration files (.d.ts) — they are not deployable.
-		if strings.HasSuffix(strings.ToLower(relToRoot), ".d.ts") {
+		if isDeclaration {
+			// TypeScript declaration files (.d.ts) are never deployable.
 			reportSkip(opts.OnSkip, relToRoot, SkipReasonDeclaration)
-			return nil
-		}
-		fileType := fileTypeForPath(relToRoot, fileExtensions)
-		if fileType == "" {
 			return nil
 		}
 		relToContent, err := filepath.Rel(contentDir, currentPath)
@@ -306,7 +342,18 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 			LocalPath: relToRoot,
 			Type:      fileType,
 		}
-		source, err := os.ReadFile(currentPath)
+		// For a symlink, read from the already-resolved, symlink-free path
+		// rather than re-opening currentPath (the link) again: re-opening
+		// the link here would race a concurrent retarget of the symlink
+		// between the validation above and this read (check-then-use), so
+		// what gets uploaded may not be what was actually validated. Reading
+		// the resolved path instead means a retarget after validation has
+		// no effect — the content read is the one that was checked.
+		readPath := currentPath
+		if isSymlink {
+			readPath = resolved
+		}
+		source, err := os.ReadFile(readPath)
 		if err != nil {
 			return err
 		}
@@ -412,6 +459,18 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 	if err != nil {
 		return nil, err
 	}
+	// Resolved once, using the deepest *existing* ancestor when contentDir
+	// itself doesn't exist yet (create/clone write into a rootDir before
+	// it's been created). Used below to catch a pre-existing symlink in
+	// targetPath's parent chain — e.g. a "pkg" directory that is actually a
+	// symlink to somewhere outside the project, left behind by a cloned
+	// repository or a previous compromised state — before writing through
+	// it. The lexical checks further down only validate the remote name's
+	// spelling; they don't see what's already on disk.
+	resolvedContentDir, err := resolveExisting(contentDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve rootDir: %w", err)
+	}
 	fileExtensions := normalizeFileExtensions(opts.FileExtensions)
 
 	var written []ProjectFile
@@ -443,6 +502,24 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		relToContent = filepath.ToSlash(relToContent)
 		if relToContent == ".." || strings.HasPrefix(relToContent, "../") {
 			return nil, fmt.Errorf("invalid remote file name: %s", file.Name)
+		}
+		// Resolve the deepest existing ancestor of the parent directory
+		// *before* creating anything: if it turns out to already be (or sit
+		// inside) a symlink pointing outside the project, refuse to write
+		// rather than silently creating/following through it. Once this
+		// check passes, MkdirAll only ever creates new, plain (non-symlink)
+		// directories for the remaining path, so nothing created here can
+		// itself introduce an escape.
+		resolvedParent, err := resolveExisting(filepath.Dir(targetPath))
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve target directory for %s: %w", file.Name, err)
+		}
+		within, err := isWithin(resolvedContentDir, resolvedParent)
+		if err != nil {
+			return nil, fmt.Errorf("invalid remote file name: %s: %w", file.Name, err)
+		}
+		if !within {
+			return nil, fmt.Errorf("remote file %q would be written outside rootDir via an existing symlink", file.Name)
 		}
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 			return nil, err
@@ -531,15 +608,30 @@ func contentDir(opts Options) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve rootDir %q: %w", opts.RootDir, err)
 	}
-	relToRoot, err := filepath.Rel(resolvedRoot, resolvedDir)
+	within, err := isWithin(resolvedRoot, resolvedDir)
 	if err != nil {
 		return "", fmt.Errorf("invalid rootDir %q: %w", opts.RootDir, err)
 	}
-	relToRoot = filepath.ToSlash(relToRoot)
-	if relToRoot == ".." || strings.HasPrefix(relToRoot, "../") {
+	if !within {
 		return "", fmt.Errorf("rootDir %q resolves outside the project root", opts.RootDir)
 	}
 	return dir, nil
+}
+
+// isWithin reports whether target is base itself or lies inside it. Callers
+// pass already symlink-resolved, absolute paths (e.g. via resolveExisting)
+// so this is a pure lexical containment check on paths that reflect the real
+// filesystem location, not just how they were spelled.
+func isWithin(base, target string) (bool, error) {
+	rel, err := filepath.Rel(base, target)
+	if err != nil {
+		return false, err
+	}
+	rel = filepath.ToSlash(rel)
+	if rel == ".." || strings.HasPrefix(rel, "../") {
+		return false, nil
+	}
+	return true, nil
 }
 
 // resolveExisting resolves symlinks in path. A path that does not exist yet

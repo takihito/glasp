@@ -1,7 +1,9 @@
 package syncer
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +12,16 @@ import (
 	"github.com/takihito/glasp/internal/config"
 	"google.golang.org/api/script/v1"
 )
+
+func captureLog(t *testing.T, fn func()) string {
+	t.Helper()
+	var buf bytes.Buffer
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(orig)
+	fn()
+	return buf.String()
+}
 
 func TestOptionsFromConfigFileExtension(t *testing.T) {
 	cfg := &config.ClaspConfig{
@@ -691,6 +703,164 @@ func TestCollectLocalFilesSkipsSymlinkedRootDirectory(t *testing.T) {
 				t.Fatalf("expected exactly 1 symlink skip for the root itself, got %+v", skipped)
 			}
 		})
+	}
+}
+
+// A symlink that resolves inside rootDir but under .glasp/ must be rejected
+// even with AllowSymlinks: .glasp/ holds internal data (tokens, archives,
+// config) that must never be collected, regardless of how it's reached.
+func TestCollectLocalFilesRejectsSymlinkIntoGlaspDir(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".glasp"), 0755); err != nil {
+		t.Fatalf("failed to create .glasp dir: %v", err)
+	}
+	secretPath := filepath.Join(root, ".glasp", "access.json")
+	if err := os.WriteFile(secretPath, []byte(`{"token":"SECRET_TOKEN"}`), 0600); err != nil {
+		t.Fatalf("failed to write secret file: %v", err)
+	}
+	linkPath := filepath.Join(root, "Code.gs")
+	if err := os.Symlink(secretPath, linkPath); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+
+	opts := Options{
+		ProjectRoot:   root,
+		RootDir:       ".",
+		AllowSymlinks: true,
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	files, err := CollectLocalFiles(opts)
+	if err == nil {
+		for _, f := range files {
+			if f.Source == `{"token":"SECRET_TOKEN"}` {
+				t.Fatalf("token file content was collected as %q", f.LocalPath)
+			}
+		}
+		t.Fatal("expected an error rejecting a symlink into .glasp/, got nil")
+	}
+}
+
+// A remote file whose local target directory is already a symlink pointing
+// outside the project (left behind by a cloned repository, or a prior
+// state) must not be written through, even though the remote name itself is
+// lexically clean.
+func TestApplyRemoteContentRejectsExistingParentSymlink(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "src"), 0755); err != nil {
+		t.Fatalf("failed to create src dir: %v", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "src", "pkg")); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     "src",
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	content := &script.Content{
+		Files: []*script.File{
+			{Name: "pkg/Code", Type: FileTypeServerJS, Source: "function a(){}"},
+		},
+	}
+	if _, err := ApplyRemoteContent(opts, content); err == nil {
+		t.Fatal("expected an error rejecting a write through an existing parent symlink")
+	}
+	if _, statErr := os.Stat(filepath.Join(outside, "Code.gs")); statErr == nil {
+		t.Fatalf("file was written outside the project at %s", filepath.Join(outside, "Code.gs"))
+	}
+}
+
+// An ignored path that was never going to be collected anyway (its
+// extension doesn't match any configured type) must not be reported via
+// OnSkip — only files that would otherwise have been candidates count
+// toward "Skipped N file(s)".
+func TestCollectLocalFilesDoesNotReportIgnoredNonCandidates(t *testing.T) {
+	root := t.TempDir()
+	nodeModulesDir := filepath.Join(root, "node_modules", "lib")
+	if err := os.MkdirAll(nodeModulesDir, 0755); err != nil {
+		t.Fatalf("failed to create node_modules dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(nodeModulesDir, "README.md"), []byte("# readme"), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "Code.gs"), []byte("function a(){}"), 0644); err != nil {
+		t.Fatalf("failed to write Code.gs: %v", err)
+	}
+	// node_modules/ is ignored by a built-in default pattern even without a
+	// .claspignore file.
+	ignore, err := config.NewClaspIgnore(root)
+	if err != nil {
+		t.Fatalf("NewClaspIgnore failed: %v", err)
+	}
+
+	var skipped []SkippedFile
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     ".",
+		Ignore:      ignore,
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+		OnSkip: func(s SkippedFile) { skipped = append(skipped, s) },
+	}
+	if _, err := CollectLocalFiles(opts); err != nil {
+		t.Fatalf("CollectLocalFiles failed: %v", err)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("expected no OnSkip reports for a non-candidate ignored file, got %+v", skipped)
+	}
+}
+
+// Per-file skip detail must only be visible at --log-level debug, matching
+// usage.md's documented contract ("Per-file details are available with
+// --log-level debug"); the one-line "Skipped N file(s)" summary is what's
+// shown by default.
+func TestCollectLocalFilesLogsSymlinkSkipAtDebugLevel(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "Target.gs"), []byte("function a(){}"), 0644); err != nil {
+		t.Fatalf("failed to write target: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(root, "Target.gs"), filepath.Join(root, "Linked.gs")); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     ".",
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+
+	// At the default (info) level, nothing about the skipped symlink should
+	// be logged.
+	infoLog := func() string {
+		var buf bytes.Buffer
+		orig := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+		defer slog.SetDefault(orig)
+		if _, err := CollectLocalFiles(opts); err != nil {
+			t.Fatalf("CollectLocalFiles failed: %v", err)
+		}
+		return buf.String()
+	}()
+	if infoLog != "" {
+		t.Fatalf("expected no log output at info level, got: %q", infoLog)
+	}
+
+	// At debug level, the detail is available.
+	debugLog := captureLog(t, func() {
+		if _, err := CollectLocalFiles(opts); err != nil {
+			t.Fatalf("CollectLocalFiles failed: %v", err)
+		}
+	})
+	if debugLog == "" {
+		t.Fatal("expected symlink skip detail to be logged at debug level")
 	}
 }
 
