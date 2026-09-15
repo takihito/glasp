@@ -314,6 +314,47 @@ func TestPushCommandFlow(t *testing.T) {
 	}
 }
 
+func TestPushCommandReportsSkippedFilesSummary(t *testing.T) {
+	root := useTempDir(t)
+	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "script-id", RootDir: "src"}); err != nil {
+		t.Fatalf("SaveClaspConfig failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "src"), 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "src", "Code.gs"), []byte("function a() {}"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "src", "types.d.ts"), []byte("declare const x: number;"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "src", "ignored.gs"), []byte("function b() {}"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claspignore"), []byte("src/ignored.gs\n"), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	fake := &fakeScriptClient{}
+	orig := newScriptClientWithCacheAuthFn
+	t.Cleanup(func() { newScriptClientWithCacheAuthFn = orig })
+	newScriptClientWithCacheAuthFn = func(ctx context.Context, cachePath, authPath string) (scriptClient, error) {
+		return fake, nil
+	}
+
+	cmd := PushCmd{}
+	out, err := captureStdout(t, func() error { return cmd.Run(nil) })
+	if err != nil {
+		t.Fatalf("PushCmd.Run failed: %v", err)
+	}
+	if !strings.Contains(out, "Skipped 2 file(s)") {
+		t.Fatalf("expected skip summary in output, got: %q", out)
+	}
+	if !strings.Contains(out, "1 ignored") || !strings.Contains(out, "1 declaration") {
+		t.Fatalf("expected ignored and declaration counts in output, got: %q", out)
+	}
+}
+
 func TestPushCommandPassesAuthPath(t *testing.T) {
 	root := useTempDir(t)
 	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "script-id", RootDir: "src"}); err != nil {

@@ -426,6 +426,192 @@ func TestApplyRemoteContentRejectsPathTraversal(t *testing.T) {
 	}
 }
 
+func TestContentDirRejectsRootDirPathTraversal(t *testing.T) {
+	root := t.TempDir()
+	cases := []string{
+		"../outside",
+		"../../etc",
+		"a/../../b",
+	}
+	for _, rootDir := range cases {
+		t.Run(rootDir, func(t *testing.T) {
+			opts := Options{ProjectRoot: root, RootDir: rootDir}
+			if _, err := CollectLocalFiles(opts); err == nil {
+				t.Fatalf("expected error for rootDir %q, got nil", rootDir)
+			}
+		})
+	}
+}
+
+func TestContentDirAllowsRootDirWithinProjectRoot(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "src"), 0755); err != nil {
+		t.Fatalf("failed to create src dir: %v", err)
+	}
+	opts := Options{ProjectRoot: root, RootDir: "./src"}
+	if _, err := CollectLocalFiles(opts); err != nil {
+		t.Fatalf("expected no error for valid rootDir, got %v", err)
+	}
+}
+
+func TestCollectLocalFilesSkipsSymlinksByDefault(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	contentDir := filepath.Join(root, "src")
+	if err := os.MkdirAll(contentDir, 0755); err != nil {
+		t.Fatalf("failed to create content dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "Code.gs"), []byte("function a() {}"), 0644); err != nil {
+		t.Fatalf("failed to write Code.gs: %v", err)
+	}
+	secretPath := filepath.Join(outside, "secret.gs")
+	if err := os.WriteFile(secretPath, []byte("function secret() {}"), 0644); err != nil {
+		t.Fatalf("failed to write secret file: %v", err)
+	}
+	linkPath := filepath.Join(contentDir, "Linked.gs")
+	if err := os.Symlink(secretPath, linkPath); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     "src",
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	files, err := CollectLocalFiles(opts)
+	if err != nil {
+		t.Fatalf("CollectLocalFiles failed: %v", err)
+	}
+	for _, f := range files {
+		if f.LocalPath == "src/Linked.gs" {
+			t.Fatalf("expected symlinked file to be skipped by default, got %+v", f)
+		}
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file (Code.gs only), got %d: %+v", len(files), files)
+	}
+}
+
+func TestCollectLocalFilesAllowSymlinksRejectsEscape(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	contentDir := filepath.Join(root, "src")
+	if err := os.MkdirAll(contentDir, 0755); err != nil {
+		t.Fatalf("failed to create content dir: %v", err)
+	}
+	secretPath := filepath.Join(outside, "secret.gs")
+	if err := os.WriteFile(secretPath, []byte("function secret() {}"), 0644); err != nil {
+		t.Fatalf("failed to write secret file: %v", err)
+	}
+	linkPath := filepath.Join(contentDir, "Linked.gs")
+	if err := os.Symlink(secretPath, linkPath); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+
+	opts := Options{
+		ProjectRoot:   root,
+		RootDir:       "src",
+		AllowSymlinks: true,
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	if _, err := CollectLocalFiles(opts); err == nil {
+		t.Fatalf("expected error for symlink escaping rootDir even with AllowSymlinks, got nil")
+	}
+}
+
+func TestCollectLocalFilesAllowSymlinksFollowsWithinRoot(t *testing.T) {
+	root := t.TempDir()
+	contentDir := filepath.Join(root, "src")
+	if err := os.MkdirAll(contentDir, 0755); err != nil {
+		t.Fatalf("failed to create content dir: %v", err)
+	}
+	targetPath := filepath.Join(contentDir, "Target.gs")
+	if err := os.WriteFile(targetPath, []byte("function target() {}"), 0644); err != nil {
+		t.Fatalf("failed to write target file: %v", err)
+	}
+	linkPath := filepath.Join(contentDir, "Linked.gs")
+	if err := os.Symlink(targetPath, linkPath); err != nil {
+		t.Skipf("symlinks not supported on this platform: %v", err)
+	}
+
+	opts := Options{
+		ProjectRoot:   root,
+		RootDir:       "src",
+		AllowSymlinks: true,
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	files, err := CollectLocalFiles(opts)
+	if err != nil {
+		t.Fatalf("CollectLocalFiles failed: %v", err)
+	}
+	found := false
+	for _, f := range files {
+		if f.LocalPath == "src/Linked.gs" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected src/Linked.gs to be collected with AllowSymlinks, got %+v", files)
+	}
+}
+
+func TestCollectLocalFilesReportsSkippedFiles(t *testing.T) {
+	root := t.TempDir()
+	contentDir := filepath.Join(root, "src")
+	if err := os.MkdirAll(contentDir, 0755); err != nil {
+		t.Fatalf("failed to create content dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "Code.gs"), []byte("function a() {}"), 0644); err != nil {
+		t.Fatalf("failed to write Code.gs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "types.d.ts"), []byte("declare const x: number;"), 0644); err != nil {
+		t.Fatalf("failed to write types.d.ts: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "ignored.gs"), []byte("function b() {}"), 0644); err != nil {
+		t.Fatalf("failed to write ignored.gs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claspignore"), []byte("src/ignored.gs\n"), 0644); err != nil {
+		t.Fatalf("failed to write .claspignore: %v", err)
+	}
+	ignore, err := config.NewClaspIgnore(root)
+	if err != nil {
+		t.Fatalf("NewClaspIgnore failed: %v", err)
+	}
+
+	var skipped []SkippedFile
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     "src",
+		Ignore:      ignore,
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs", ".ts"},
+		},
+		OnSkip: func(s SkippedFile) {
+			skipped = append(skipped, s)
+		},
+	}
+	if _, err := CollectLocalFiles(opts); err != nil {
+		t.Fatalf("CollectLocalFiles failed: %v", err)
+	}
+
+	byReason := map[SkipReason]int{}
+	for _, s := range skipped {
+		byReason[s.Reason]++
+	}
+	if byReason[SkipReasonIgnored] != 1 {
+		t.Fatalf("expected 1 ignored skip, got %d (%+v)", byReason[SkipReasonIgnored], skipped)
+	}
+	if byReason[SkipReasonDeclaration] != 1 {
+		t.Fatalf("expected 1 declaration skip, got %d (%+v)", byReason[SkipReasonDeclaration], skipped)
+	}
+}
+
 func TestSortFilesByPushOrder(t *testing.T) {
 	t.Run("orders-matching-prefix", func(t *testing.T) {
 		files := []ProjectFile{

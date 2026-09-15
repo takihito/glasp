@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/fsutil"
 	"golang.org/x/oauth2"
 )
 
@@ -102,10 +104,35 @@ func saveTokenExclusive(file string, token *oauth2.Token) error {
 	return nil
 }
 
+// warnIfWorldOrGroupReadable logs (does not fail) when an auth/token cache
+// file is readable by users other than its owner. This file holds an OAuth
+// access/refresh token, so an over-permissive mode (e.g. left behind by an
+// umask, or restored from an archive/backup that didn't preserve 0600)
+// exposes it to other local users; saveToken/saveTokenExclusive already
+// write it as 0600, so a mismatch here means something outside glasp
+// widened it. Windows permission bits don't map onto the POSIX rwx model
+// this checks, so the check is skipped there.
+func warnIfWorldOrGroupReadable(file string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	info, err := os.Stat(file)
+	if err != nil {
+		// Let the subsequent os.ReadFile report the real error (missing
+		// file, permission denied, etc.) with full context.
+		return
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		slog.Warn("auth/token cache file is readable by group or other; expected 0600",
+			"path", file, "mode", info.Mode().Perm().String())
+	}
+}
+
 // loadToken loads the token and OAuth client credentials from a file.
 // It supports both the new .clasprc.json-compatible format and the legacy
 // flat oauth2.Token format for backward compatibility.
 func loadToken(file string) (token *oauth2.Token, clientID, clientSecret string, err error) {
+	warnIfWorldOrGroupReadable(file)
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to open token cache file: %w", err)
@@ -236,50 +263,12 @@ func persistAuthToken(authPath string, token *oauth2.Token) error {
 	return writePrivateFileAtomically(authPath, append(updated, '\n'))
 }
 
+// writePrivateFileAtomically writes an auth file (0600) atomically. It is a
+// thin wrapper around fsutil.WriteFileAtomic, kept as a named helper here
+// since every call site in this file is writing a token cache file.
 func writePrivateFileAtomically(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	tempFile, err := os.CreateTemp(dir, ".clasprc.tmp-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file in %s: %w", dir, err)
-	}
-	tempPath := tempFile.Name()
-	defer func() {
-		_ = os.Remove(tempPath)
-	}()
-	if err := tempFile.Chmod(0600); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("failed to set temp file permissions: %w", err)
-	}
-	if _, err := tempFile.Write(data); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("failed to write temp file: %w", err)
-	}
-	if err := tempFile.Close(); err != nil {
-		return fmt.Errorf("failed to close temp file: %w", err)
-	}
-	// On Windows, os.Rename fails if the destination already exists.
-	// Back up the original first so we can restore it if rename fails.
-	backupPath := path + ".bak"
-	hadOriginal := false
-	if _, err := os.Stat(path); err == nil {
-		hadOriginal = true
-		_ = os.Remove(backupPath) // remove stale backup if any
-		if err := os.Rename(path, backupPath); err != nil {
-			return fmt.Errorf("failed to back up existing file %s: %w", path, err)
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to stat existing file %s: %w", path, err)
-	}
-	if err := os.Rename(tempPath, path); err != nil {
-		if hadOriginal {
-			if restoreErr := os.Rename(backupPath, path); restoreErr != nil {
-				return fmt.Errorf("failed to replace auth file %s: %w (also failed to restore backup: %v)", path, err, restoreErr)
-			}
-		}
+	if err := fsutil.WriteFileAtomic(path, data, 0600); err != nil {
 		return fmt.Errorf("failed to replace auth file %s: %w", path, err)
-	}
-	if hadOriginal {
-		_ = os.Remove(backupPath)
 	}
 	return nil
 }

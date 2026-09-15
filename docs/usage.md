@@ -181,6 +181,22 @@ You can also set a project-wide value in `.glasp/config.json`:
 }
 ```
 
+## Symlinks
+
+By default, `push` and `convert` **skip symlinked files** when collecting local files, instead of reading through the link. This protects against accidentally uploading a file reachable via a symlink that points outside the project (for example, in a project directory shared with other users or tools).
+
+Use `--allow-symlinks` (or `GLASP_ALLOW_SYMLINKS=1`) to follow symlinked files. Even with this flag, a symlink whose target resolves outside `rootDir` is rejected with an error — it is never silently followed. Symlinked *directories* are never traversed, with or without the flag.
+
+```bash
+# Follow symlinked files during push
+glasp push --allow-symlinks
+
+# Or via environment variable
+GLASP_ALLOW_SYMLINKS=1 glasp push
+```
+
+When a file is skipped (via `.claspignore`, as a `.d.ts` declaration file, or as a symlink), `push`/`convert` prints a one-line summary, e.g. `Skipped 2 file(s): 1 ignored, 1 symlink`. Per-file details are available with `--log-level debug`.
+
 ## Logging
 
 glasp writes diagnostic logs (warnings, fallback notices, debug traces) to **stderr** in a structured format. Command results (e.g. `Pulled project ...`) are regular output and are not affected by these settings.

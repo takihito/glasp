@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/fsutil"
 	"google.golang.org/api/script/v1"
 )
 
@@ -29,6 +31,52 @@ type Options struct {
 	FileExtensions     map[string][]string
 	FilePushOrder      []string
 	SkipSubdirectories bool
+	// AllowSymlinks opts into following symlinked files during local file
+	// collection. It is a CLI-level choice (--allow-symlinks /
+	// GLASP_ALLOW_SYMLINKS), not part of .clasp.json, so callers set it after
+	// building Options from config. When false (the default), symlinked files
+	// are skipped rather than read, since a project shared over a symlinked
+	// folder could otherwise cause push to read and upload arbitrary files
+	// reachable via a link (e.g. one pointing outside the project).
+	AllowSymlinks bool
+	// OnSkip, when set, is called once for every candidate file
+	// CollectLocalFiles decides not to collect for a reason a user might not
+	// expect (matched .claspignore, a symlink, or a .d.ts declaration file).
+	// It is not called for files that simply don't match a configured
+	// extension (e.g. README.md in a typical project) — that is expected,
+	// not surprising, behavior. Callers use this to surface a "N files
+	// skipped" summary so a file missing from a push isn't a silent mystery.
+	OnSkip func(SkippedFile)
+}
+
+// SkipReason identifies why CollectLocalFiles did not collect a candidate file.
+type SkipReason string
+
+const (
+	// SkipReasonIgnored means the path matched .claspignore (or a built-in
+	// default ignore pattern such as node_modules/).
+	SkipReasonIgnored SkipReason = "ignored"
+	// SkipReasonDeclaration means the file is a TypeScript .d.ts declaration
+	// file, which is never deployable and is always excluded.
+	SkipReasonDeclaration SkipReason = "declaration"
+	// SkipReasonSymlink means the file is a symlink that was skipped because
+	// --allow-symlinks was not set.
+	SkipReasonSymlink SkipReason = "symlink"
+)
+
+// SkippedFile records one file CollectLocalFiles chose not to collect,
+// reported via Options.OnSkip.
+type SkippedFile struct {
+	// Path is the file's path relative to ProjectRoot (slash-separated).
+	Path   string
+	Reason SkipReason
+}
+
+func reportSkip(onSkip func(SkippedFile), path string, reason SkipReason) {
+	if onSkip == nil {
+		return
+	}
+	onSkip(SkippedFile{Path: path, Reason: reason})
 }
 
 // ProjectFile represents a file mapped between local and remote.
@@ -98,6 +146,14 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Resolved once for comparing against symlink targets (which
+	// filepath.EvalSymlinks also fully resolves) further down, so the
+	// comparison isn't thrown off by a symlink earlier in contentDir itself
+	// (e.g. /tmp -> /private/tmp on macOS).
+	resolvedContentDir, err := filepath.EvalSymlinks(contentDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve rootDir: %w", err)
+	}
 	fileExtensions := normalizeFileExtensions(opts.FileExtensions)
 	sameContentAndProjectRoot := filepath.Clean(contentDir) == filepath.Clean(opts.ProjectRoot)
 
@@ -158,10 +214,50 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 		}
 		relToRoot = filepath.ToSlash(relToRoot)
 		if opts.Ignore != nil && opts.Ignore.Matches(relToRoot) {
+			reportSkip(opts.OnSkip, relToRoot, SkipReasonIgnored)
 			return nil
+		}
+		// A symlink entry here is always a symlinked file, not a directory:
+		// filepath.WalkDir never descends into a symlinked directory (its
+		// DirEntry reports IsDir()==false), so directory symlinks are simply
+		// never traversed, regardless of AllowSymlinks.
+		//
+		// Symlinked files are skipped by default: a project shared over a
+		// symlinked folder could otherwise let push silently read (and
+		// upload) a file reachable via a link pointing outside the project,
+		// e.g. a link to a secrets file or another user's home directory.
+		// --allow-symlinks / GLASP_ALLOW_SYMLINKS opts back in, but even then
+		// the link target must resolve inside contentDir.
+		if entry.Type()&fs.ModeSymlink != 0 {
+			if !opts.AllowSymlinks {
+				slog.Warn("skipping symlinked file (use --allow-symlinks to include it)", "path", relToRoot)
+				reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
+				return nil
+			}
+			resolved, err := filepath.EvalSymlinks(currentPath)
+			if err != nil {
+				return fmt.Errorf("failed to resolve symlink %s: %w", relToRoot, err)
+			}
+			info, err := os.Stat(resolved)
+			if err != nil {
+				return fmt.Errorf("failed to stat symlink target for %s: %w", relToRoot, err)
+			}
+			if info.IsDir() {
+				slog.Warn("skipping symlink to a directory (directory symlinks are never followed)", "path", relToRoot)
+				return nil
+			}
+			relToContentDir, err := filepath.Rel(resolvedContentDir, resolved)
+			if err != nil {
+				return fmt.Errorf("invalid symlink target for %s: %w", relToRoot, err)
+			}
+			relToContentDir = filepath.ToSlash(relToContentDir)
+			if relToContentDir == ".." || strings.HasPrefix(relToContentDir, "../") {
+				return fmt.Errorf("symlink %s resolves outside rootDir; refusing to follow it even with --allow-symlinks", relToRoot)
+			}
 		}
 		// Skip TypeScript declaration files (.d.ts) — they are not deployable.
 		if strings.HasSuffix(strings.ToLower(relToRoot), ".d.ts") {
+			reportSkip(opts.OnSkip, relToRoot, SkipReasonDeclaration)
 			return nil
 		}
 		fileType := fileTypeForPath(relToRoot, fileExtensions)
@@ -277,7 +373,7 @@ func ArchiveLocalFiles(archiveRoot string, files []ProjectFile) error {
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 			return fmt.Errorf("failed to create archive directory: %w", err)
 		}
-		if err := os.WriteFile(targetPath, []byte(file.Source), 0644); err != nil {
+		if err := fsutil.WriteFileAtomic(targetPath, []byte(file.Source), 0644); err != nil {
 			return fmt.Errorf("failed to write archive file: %w", err)
 		}
 	}
@@ -329,7 +425,11 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 			return nil, err
 		}
 		source := file.Source
-		if err := os.WriteFile(targetPath, []byte(source), 0644); err != nil {
+		// Written atomically (temp file + rename) so a pull interrupted
+		// mid-write (API error, signal, crash) never leaves a local file
+		// half-written; the previous content or nothing is observed, never
+		// a corrupt partial file.
+		if err := fsutil.WriteFileAtomic(targetPath, []byte(source), 0644); err != nil {
 			return nil, err
 		}
 		relToRoot, err := filepath.Rel(opts.ProjectRoot, targetPath)
@@ -389,7 +489,20 @@ func contentDir(opts Options) (string, error) {
 	if rootDir == "" {
 		rootDir = "."
 	}
-	return filepath.Join(opts.ProjectRoot, filepath.Clean(rootDir)), nil
+	dir := filepath.Join(opts.ProjectRoot, filepath.Clean(rootDir))
+	// Reject a rootDir/srcDir (from .clasp.json, which may come from a
+	// cloned/untrusted repository) that resolves outside the project root.
+	// This mirrors the traversal guard already applied to remote file names
+	// in ApplyRemoteContent (see clasp CWE-22 fix, srcDir traversal).
+	relToRoot, err := filepath.Rel(opts.ProjectRoot, dir)
+	if err != nil {
+		return "", fmt.Errorf("invalid rootDir %q: %w", opts.RootDir, err)
+	}
+	relToRoot = filepath.ToSlash(relToRoot)
+	if relToRoot == ".." || strings.HasPrefix(relToRoot, "../") {
+		return "", fmt.Errorf("rootDir %q resolves outside the project root", opts.RootDir)
+	}
+	return dir, nil
 }
 
 func fileTypeForPath(localPath string, fileExtensions map[string][]string) string {
