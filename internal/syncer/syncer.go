@@ -217,33 +217,56 @@ func CollectLocalFiles(opts Options) ([]ProjectFile, error) {
 			reportSkip(opts.OnSkip, relToRoot, SkipReasonIgnored)
 			return nil
 		}
-		// A symlink entry here is always a symlinked file, not a directory:
-		// filepath.WalkDir never descends into a symlinked directory (its
-		// DirEntry reports IsDir()==false), so directory symlinks are simply
-		// never traversed, regardless of AllowSymlinks.
+		// A symlink entry here is usually a symlinked file: for a symlink
+		// found *inside* contentDir, filepath.WalkDir never descends into it
+		// even when it points at a directory (its DirEntry reports
+		// IsDir()==false), so a symlinked directory below contentDir is
+		// simply never traversed, regardless of AllowSymlinks. The one
+		// exception is currentPath itself being contentDir (WalkDir does
+		// follow a symlinked root's *own* entry, though still without
+		// descending into it) — a directory symlink can reach this branch,
+		// which is why the message below checks the target's type rather
+		// than assuming "file".
 		//
-		// Symlinked files are skipped by default: a project shared over a
+		// Symlinks are skipped by default: a project shared over a
 		// symlinked folder could otherwise let push silently read (and
 		// upload) a file reachable via a link pointing outside the project,
 		// e.g. a link to a secrets file or another user's home directory.
 		// --allow-symlinks / GLASP_ALLOW_SYMLINKS opts back in, but even then
 		// the link target must resolve inside contentDir.
 		if entry.Type()&fs.ModeSymlink != 0 {
+			// Resolve eagerly (even when not following the link) purely to
+			// report an accurate "file" vs "directory" in the skip message;
+			// a broken or unresolvable link falls back to generic wording
+			// rather than failing the walk when we weren't going to follow
+			// it anyway.
+			resolved, resolveErr := filepath.EvalSymlinks(currentPath)
+			var targetIsDir, targetStatOK bool
+			if resolveErr == nil {
+				if info, statErr := os.Stat(resolved); statErr == nil {
+					targetIsDir = info.IsDir()
+					targetStatOK = true
+				}
+			}
+
 			if !opts.AllowSymlinks {
-				slog.Warn("skipping symlinked file (use --allow-symlinks to include it)", "path", relToRoot)
+				if targetIsDir {
+					slog.Warn("skipping symlinked directory (directory symlinks are never followed, even with --allow-symlinks)", "path", relToRoot)
+				} else {
+					slog.Warn("skipping symlinked file (use --allow-symlinks to include it)", "path", relToRoot)
+				}
 				reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
 				return nil
 			}
-			resolved, err := filepath.EvalSymlinks(currentPath)
-			if err != nil {
-				return fmt.Errorf("failed to resolve symlink %s: %w", relToRoot, err)
+			if resolveErr != nil {
+				return fmt.Errorf("failed to resolve symlink %s: %w", relToRoot, resolveErr)
 			}
-			info, err := os.Stat(resolved)
-			if err != nil {
-				return fmt.Errorf("failed to stat symlink target for %s: %w", relToRoot, err)
+			if !targetStatOK {
+				return fmt.Errorf("failed to stat symlink target for %s", relToRoot)
 			}
-			if info.IsDir() {
-				slog.Warn("skipping symlink to a directory (directory symlinks are never followed)", "path", relToRoot)
+			if targetIsDir {
+				slog.Warn("skipping symlinked directory (directory symlinks are never followed, even with --allow-symlinks)", "path", relToRoot)
+				reportSkip(opts.OnSkip, relToRoot, SkipReasonSymlink)
 				return nil
 			}
 			relToContentDir, err := filepath.Rel(resolvedContentDir, resolved)

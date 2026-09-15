@@ -634,6 +634,66 @@ func TestCollectLocalFilesAllowSymlinksFollowsWithinRoot(t *testing.T) {
 	}
 }
 
+// When rootDir itself is a symlinked directory (pointing at another
+// directory inside the project, so contentDir()'s containment check does
+// not reject it outright), filepath.WalkDir visits that root entry once but
+// — unlike a symlink found inside contentDir — does not descend into it
+// even when AllowSymlinks is true (WalkDir never follows a symlinked
+// directory's contents; the "follow" special-case only applies to the
+// walk's own starting argument, and even then only as a single visited
+// entry, not a traversal). So no files are ever collected from a symlinked
+// rootDir, regardless of AllowSymlinks, and the skip is reported once for
+// the root itself with an accurate "directory" message.
+//
+// (A rootDir symlink resolving *outside* the project is instead rejected
+// earlier, by contentDir()'s own containment check — see
+// TestContentDirRejectsRootDirEscapingViaIntermediateSymlink.)
+func TestCollectLocalFilesSkipsSymlinkedRootDirectory(t *testing.T) {
+	for _, allowSymlinks := range []bool{false, true} {
+		name := "allow-symlinks=false"
+		if allowSymlinks {
+			name = "allow-symlinks=true"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			actualDir := filepath.Join(root, "actual")
+			if err := os.MkdirAll(actualDir, 0755); err != nil {
+				t.Fatalf("failed to create actual dir: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(actualDir, "Code.gs"), []byte("function a() {}"), 0644); err != nil {
+				t.Fatalf("failed to write file: %v", err)
+			}
+			linkPath := filepath.Join(root, "src")
+			if err := os.Symlink(actualDir, linkPath); err != nil {
+				t.Skipf("symlinks not supported on this platform: %v", err)
+			}
+
+			var skipped []SkippedFile
+			opts := Options{
+				ProjectRoot:   root,
+				RootDir:       "src",
+				AllowSymlinks: allowSymlinks,
+				FileExtensions: map[string][]string{
+					FileTypeServerJS: {".gs"},
+				},
+				OnSkip: func(s SkippedFile) {
+					skipped = append(skipped, s)
+				},
+			}
+			files, err := CollectLocalFiles(opts)
+			if err != nil {
+				t.Fatalf("CollectLocalFiles failed: %v", err)
+			}
+			if len(files) != 0 {
+				t.Fatalf("expected no files collected from a symlinked rootDir, got %+v", files)
+			}
+			if len(skipped) != 1 || skipped[0].Reason != SkipReasonSymlink {
+				t.Fatalf("expected exactly 1 symlink skip for the root itself, got %+v", skipped)
+			}
+		})
+	}
+}
+
 func TestCollectLocalFilesReportsSkippedFiles(t *testing.T) {
 	root := t.TempDir()
 	contentDir := filepath.Join(root, "src")
