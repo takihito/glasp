@@ -493,8 +493,22 @@ func contentDir(opts Options) (string, error) {
 	// Reject a rootDir/srcDir (from .clasp.json, which may come from a
 	// cloned/untrusted repository) that resolves outside the project root.
 	// This mirrors the traversal guard already applied to remote file names
-	// in ApplyRemoteContent (see clasp CWE-22 fix, srcDir traversal).
-	relToRoot, err := filepath.Rel(opts.ProjectRoot, dir)
+	// in ApplyRemoteContent.
+	//
+	// The check is done on symlink-resolved paths, not just lexically: a
+	// lexically-inside rootDir such as "link/src" escapes the project when
+	// "link" is a symlink to an outside directory (a symlink a cloned
+	// repository can carry). A lexical filepath.Rel would accept that and
+	// let push read — and pull write — files outside the project.
+	resolvedRoot, err := resolveExisting(opts.ProjectRoot)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve project root: %w", err)
+	}
+	resolvedDir, err := resolveExisting(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve rootDir %q: %w", opts.RootDir, err)
+	}
+	relToRoot, err := filepath.Rel(resolvedRoot, resolvedDir)
 	if err != nil {
 		return "", fmt.Errorf("invalid rootDir %q: %w", opts.RootDir, err)
 	}
@@ -503,6 +517,37 @@ func contentDir(opts Options) (string, error) {
 		return "", fmt.Errorf("rootDir %q resolves outside the project root", opts.RootDir)
 	}
 	return dir, nil
+}
+
+// resolveExisting resolves symlinks in path. A path that does not exist yet
+// (create/clone write into a rootDir before it exists) cannot be resolved
+// directly, so the deepest existing ancestor is resolved instead and the
+// remaining, not-yet-created components are appended to it. Those components
+// are plain names — they cannot be symlinks, because they do not exist — so
+// the result is still a faithful resolution for containment checks.
+func resolveExisting(path string) (string, error) {
+	remaining := ""
+	current := filepath.Clean(path)
+	for {
+		resolved, err := filepath.EvalSymlinks(current)
+		if err == nil {
+			if remaining == "" {
+				return resolved, nil
+			}
+			return filepath.Join(resolved, remaining), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			// Reached the filesystem root without finding an existing
+			// ancestor: nothing to resolve, use the path as given.
+			return filepath.Clean(path), nil
+		}
+		remaining = filepath.Join(filepath.Base(current), remaining)
+		current = parent
+	}
 }
 
 func fileTypeForPath(localPath string, fileExtensions map[string][]string) string {

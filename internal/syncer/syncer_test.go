@@ -443,6 +443,79 @@ func TestContentDirRejectsRootDirPathTraversal(t *testing.T) {
 	}
 }
 
+// A rootDir that is lexically inside the project but reaches outside through
+// a symlinked intermediate component must be rejected in both directions,
+// with or without AllowSymlinks — the escape is the rootDir itself, not an
+// individual file inside it.
+func TestContentDirRejectsRootDirEscapingViaIntermediateSymlink(t *testing.T) {
+	for _, allowSymlinks := range []bool{false, true} {
+		name := "allow-symlinks=false"
+		if allowSymlinks {
+			name = "allow-symlinks=true"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			outside := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(outside, "src"), 0755); err != nil {
+				t.Fatalf("failed to create outside dir: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(outside, "src", "Secret.gs"), []byte("secret"), 0644); err != nil {
+				t.Fatalf("failed to write outside file: %v", err)
+			}
+			if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
+				t.Skipf("symlinks not supported on this platform: %v", err)
+			}
+
+			opts := Options{
+				ProjectRoot:   root,
+				RootDir:       "link/src",
+				AllowSymlinks: allowSymlinks,
+				FileExtensions: map[string][]string{
+					FileTypeServerJS: {".gs"},
+				},
+			}
+			if files, err := CollectLocalFiles(opts); err == nil {
+				t.Fatalf("expected CollectLocalFiles to reject escaping rootDir, collected %+v", files)
+			}
+			content := &script.Content{
+				Files: []*script.File{
+					{Name: "Written", Type: FileTypeServerJS, Source: "function a() {}"},
+				},
+			}
+			if _, err := ApplyRemoteContent(opts, content); err == nil {
+				t.Fatal("expected ApplyRemoteContent to reject escaping rootDir")
+			}
+			if _, err := os.Stat(filepath.Join(outside, "src", "Written.gs")); !os.IsNotExist(err) {
+				t.Fatalf("expected no file written outside the project, stat err = %v", err)
+			}
+		})
+	}
+}
+
+// create/clone resolve the content directory before it exists on disk, so a
+// not-yet-created rootDir must still be accepted.
+func TestContentDirAllowsNotYetCreatedRootDir(t *testing.T) {
+	root := t.TempDir()
+	opts := Options{
+		ProjectRoot: root,
+		RootDir:     "src/nested",
+		FileExtensions: map[string][]string{
+			FileTypeServerJS: {".gs"},
+		},
+	}
+	content := &script.Content{
+		Files: []*script.File{
+			{Name: "Code", Type: FileTypeServerJS, Source: "function a() {}"},
+		},
+	}
+	if _, err := ApplyRemoteContent(opts, content); err != nil {
+		t.Fatalf("expected not-yet-created rootDir to be accepted, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "src", "nested", "Code.gs")); err != nil {
+		t.Fatalf("expected Code.gs to be written: %v", err)
+	}
+}
+
 func TestContentDirAllowsRootDirWithinProjectRoot(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "src"), 0755); err != nil {
