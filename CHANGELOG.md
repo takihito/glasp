@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.2](https://github.com/takihito/glasp/compare/v0.5.1...v0.5.2) - 2026-09-17
+
+- build(deps): bump google.golang.org/api from 0.294.0 to 0.297.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/172
+
 ## [v0.5.1](https://github.com/takihito/glasp/compare/v0.5.0...v0.5.1) - 2026-09-07
 
 - docs: update version references from v0.4.0 to v0.5.0 by @takihito in https://github.com/takihito/glasp/pull/147
