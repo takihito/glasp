@@ -1,6 +1,6 @@
 module github.com/takihito/glasp
 
-go 1.25.8
+go 1.26.0
 
 require (
 	github.com/alecthomas/kong v1.16.1
@@ -9,7 +9,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.47.0
-	google.golang.org/api v0.294.0
+	google.golang.org/api v0.297.0
 )
 
 require (
