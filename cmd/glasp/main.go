@@ -47,10 +47,11 @@ const defaultHTTPRetries = 3
 // bindings: the base context and the archive metadata recorded into history.
 // All methods tolerate a nil receiver so tests can invoke Run(nil).
 type runContext struct {
-	ctx         context.Context
-	archive     runArchiveMeta
-	httpTimeout time.Duration
-	httpRetries int
+	ctx           context.Context
+	archive       runArchiveMeta
+	httpTimeout   time.Duration
+	httpRetries   int
+	allowSymlinks bool
 }
 
 // Context returns the invocation context.
@@ -76,6 +77,15 @@ func (rc *runContext) HTTPRetries() int {
 		return 0
 	}
 	return rc.httpRetries
+}
+
+// AllowSymlinks reports whether local file collection should follow
+// symlinked files instead of skipping them (--allow-symlinks / GLASP_ALLOW_SYMLINKS).
+func (rc *runContext) AllowSymlinks() bool {
+	if rc == nil {
+		return false
+	}
+	return rc.allowSymlinks
 }
 
 func (rc *runContext) setArchiveMeta(enabled bool, direction string) {
@@ -108,6 +118,7 @@ type CLI struct {
 	NoTimeout        bool                `name:"no-timeout" env:"GLASP_NO_TIMEOUT" help:"Disable HTTP timeout for Script API requests (unlimited). Overrides --timeout and .glasp/config.json."`
 	MaxRetries       int                 `name:"max-retries" env:"GLASP_MAX_RETRIES" help:"Max retry attempts for transient Script API failures (5xx/429/network). Applies only to idempotent commands (push, pull, list-deployments, clone). 0 = use .glasp/config.json value or default (3)."`
 	NoRetries        bool                `name:"no-retries" env:"GLASP_NO_RETRIES" help:"Disable retries for Script API requests. Overrides --max-retries and .glasp/config.json."`
+	AllowSymlinks    bool                `name:"allow-symlinks" env:"GLASP_ALLOW_SYMLINKS" help:"Follow symlinked files when collecting local files for push/convert (default: skip them). The link target must still resolve inside rootDir."`
 	Login            LoginCmd            `cmd:"" help:"Log in to Google account."`
 	Logout           LogoutCmd           `cmd:"" help:"Log out from Google account."`
 	CreateScript     CreateCmd           `cmd:"" name:"create-script" aliases:"create" help:"Create a new Apps Script project."`
@@ -156,9 +167,10 @@ func main() {
 		retries = 0
 	}
 	rc := &runContext{
-		ctx:         context.Background(),
-		httpTimeout: resolveHTTPTimeout(cli.Timeout, cli.NoTimeout),
-		httpRetries: retries,
+		ctx:           context.Background(),
+		httpTimeout:   resolveHTTPTimeout(cli.Timeout, cli.NoTimeout),
+		httpRetries:   retries,
+		allowSymlinks: cli.AllowSymlinks,
 	}
 	err := parsed.Run(rc)
 	recordRunHistory(rawArgs, commandName, time.Since(start), err, rc.archiveMeta())

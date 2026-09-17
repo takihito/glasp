@@ -70,9 +70,15 @@ func (c *PushCmd) Run(rc *runContext) error {
 	if err != nil {
 		return err
 	}
+	opts.AllowSymlinks = rc.AllowSymlinks()
+	skips := newSkipTracker()
+	opts.OnSkip = skips.OnSkip
 	files, err := syncer.CollectLocalFiles(opts)
 	if err != nil {
 		return err
+	}
+	if summary := skips.Summary(); summary != "" {
+		fmt.Fprint(stdout, summary)
 	}
 	syncer.SortFilesByPushOrder(files, opts.FilePushOrder, opts.RootDir)
 	// Enable TS→GAS transpilation when fileExtension is "ts" or when

@@ -45,7 +45,10 @@ func (c *ConvertCmd) Run(rc *runContext) error {
 	if err != nil {
 		return err
 	}
+	opts.AllowSymlinks = rc.AllowSymlinks()
 	opts.FileExtensions = transformFileExtensions(opts.FileExtensions, mode)
+	skips := newSkipTracker()
+	opts.OnSkip = skips.OnSkip
 	outDir := defaultTransformOutDir(projectRoot, mode)
 	filter, err := transform.NewTargetFilter(projectRoot, c.Targets)
 	if err != nil {
@@ -54,6 +57,9 @@ func (c *ConvertCmd) Run(rc *runContext) error {
 	result, err := transformConvertFn(opts, outDir, mode, filter)
 	if err != nil {
 		return err
+	}
+	if summary := skips.Summary(); summary != "" {
+		fmt.Fprint(stdout, summary)
 	}
 	fmt.Fprintf(stdout, "Converted %d files to %s\n", len(result.Written), result.OutDir)
 	return nil

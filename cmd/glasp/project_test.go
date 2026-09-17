@@ -67,6 +67,21 @@ func TestValidateScriptID(t *testing.T) {
 	})
 }
 
+func TestIsStandaloneCreateType(t *testing.T) {
+	standalone := []string{"standalone", "webapp", "api", "STANDALONE", "WebApp", " api "}
+	for _, projectType := range standalone {
+		if !isStandaloneCreateType(projectType) {
+			t.Errorf("expected %q to be treated as standalone", projectType)
+		}
+	}
+	containerBound := []string{"docs", "sheets", "slides", "forms", ""}
+	for _, projectType := range containerBound {
+		if isStandaloneCreateType(projectType) {
+			t.Errorf("expected %q to require --parentId", projectType)
+		}
+	}
+}
+
 func TestFindExistingProjectRootFindsParent(t *testing.T) {
 	// Setup: create a temp project root with .clasp.json, then cd into a subdir
 	projectRoot := t.TempDir()
