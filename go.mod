@@ -7,7 +7,7 @@ require (
 	github.com/evanw/esbuild v0.28.2
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.47.0
 	google.golang.org/api v0.297.0
 )
