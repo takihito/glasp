@@ -38,8 +38,8 @@ func (c *CreateCmd) Run(rc *runContext) error {
 		return err
 	}
 	parentID := strings.TrimSpace(c.ParentID)
-	if parentID == "" && projectType != "standalone" {
-		return fmt.Errorf("project type %q is not supported yet; currently only \"standalone\" is supported without --parentId", projectType)
+	if parentID == "" && !isStandaloneCreateType(projectType) {
+		return fmt.Errorf("project type %q is not supported yet; currently only \"standalone\" (and its aliases \"webapp\"/\"api\") are supported without --parentId", projectType)
 	}
 
 	projectRoot, err := os.Getwd()

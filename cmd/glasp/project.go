@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/takihito/glasp/internal/config"
+	"github.com/takihito/glasp/internal/syncer"
 )
 
 const maxTitleLength = 256
@@ -84,6 +86,19 @@ func validateCreateType(projectType string) error {
 	}
 }
 
+// isStandaloneCreateType reports whether projectType creates a standalone
+// script that does not require --parentId. "webapp" and "api" are aliases
+// for "standalone" (matching clasp's `create --type webapp|api`), not
+// container-bound types like "docs"/"sheets"/"slides"/"forms".
+func isStandaloneCreateType(projectType string) bool {
+	switch strings.ToLower(strings.TrimSpace(projectType)) {
+	case "standalone", "webapp", "api":
+		return true
+	default:
+		return false
+	}
+}
+
 // findExistingProjectRoot locates the nearest .clasp.json by searching upward
 // from the current directory. Returns an error if no .clasp.json is found.
 // When the project root differs from the current directory, the resolved path
@@ -133,6 +148,42 @@ func loadProjectContext() (*projectContext, error) {
 		return nil, err
 	}
 	return &projectContext{Root: root, Config: cfg, ScriptID: scriptID}, nil
+}
+
+// skipTracker accumulates syncer.SkippedFile reports (via its OnSkip method,
+// used as an syncer.Options.OnSkip callback) so the caller can print a
+// "N files skipped" summary after collection. Individual paths are logged at
+// debug level as they arrive; only the aggregate reaches stdout, so a project
+// with many intentionally-ignored files doesn't get spammed on every push.
+type skipTracker struct {
+	counts map[syncer.SkipReason]int
+	total  int
+}
+
+func newSkipTracker() *skipTracker {
+	return &skipTracker{counts: make(map[syncer.SkipReason]int)}
+}
+
+// OnSkip is used as syncer.Options.OnSkip.
+func (t *skipTracker) OnSkip(s syncer.SkippedFile) {
+	t.total++
+	t.counts[s.Reason]++
+	slog.Debug("skipped file", "path", s.Path, "reason", string(s.Reason))
+}
+
+// Summary formats a one-line "N files skipped (...)" message, or "" if
+// nothing was skipped.
+func (t *skipTracker) Summary() string {
+	if t.total == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(t.counts))
+	for _, reason := range []syncer.SkipReason{syncer.SkipReasonIgnored, syncer.SkipReasonSymlink, syncer.SkipReasonDeclaration} {
+		if n := t.counts[reason]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, reason))
+		}
+	}
+	return fmt.Sprintf("Skipped %d file(s): %s\n", t.total, strings.Join(parts, ", "))
 }
 
 func optionalAuthPath(raw string) (string, error) {

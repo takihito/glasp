@@ -81,6 +81,28 @@ func TestCreateCommandRejectsExistingConfig(t *testing.T) {
 	}
 }
 
+func TestCreateCommandAllowsWebappAndAPITypesWithoutParentID(t *testing.T) {
+	for _, projectType := range []string{"webapp", "api"} {
+		t.Run(projectType, func(t *testing.T) {
+			useTempDir(t)
+			fake := &fakeScriptClient{
+				createProjectResp: &script.Project{ScriptId: "script-id"},
+				getContentResp:    sampleContent(),
+			}
+			origWithCacheAuth := newScriptClientWithCacheAuthFn
+			t.Cleanup(func() { newScriptClientWithCacheAuthFn = origWithCacheAuth })
+			newScriptClientWithCacheAuthFn = func(ctx context.Context, cachePath, authPath string) (scriptClient, error) {
+				return fake, nil
+			}
+
+			cmd := CreateCmd{Title: "My Project", Type: projectType}
+			if err := cmd.Run(nil); err != nil {
+				t.Fatalf("expected --type %s to be accepted without --parentId, got: %v", projectType, err)
+			}
+		})
+	}
+}
+
 func TestCreateCommandRejectsNonStandaloneTypeWithoutParentID(t *testing.T) {
 	useTempDir(t)
 	origWithCacheAuth := newScriptClientWithCacheAuthFn
@@ -95,7 +117,7 @@ func TestCreateCommandRejectsNonStandaloneTypeWithoutParentID(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected non-standalone type to be rejected without --parentId")
 	}
-	if !strings.Contains(err.Error(), "currently only \"standalone\" is supported without --parentId") {
+	if !strings.Contains(err.Error(), "currently only \"standalone\" (and its aliases \"webapp\"/\"api\") are supported without --parentId") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

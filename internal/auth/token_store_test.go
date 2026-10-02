@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -117,6 +120,61 @@ func TestSaveLoadToken(t *testing.T) {
 	}
 	if clientSecret != "" {
 		t.Errorf("expected empty clientSecret, got %s", clientSecret)
+	}
+}
+
+func captureLog(t *testing.T, fn func()) string {
+	t.Helper()
+	var buf bytes.Buffer
+	orig := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(orig)
+	fn()
+	return buf.String()
+}
+
+func TestLoadTokenWarnsOnWorldReadablePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits do not apply on windows")
+	}
+	dir := t.TempDir()
+	file := filepath.Join(dir, "access.json")
+	token := &oauth2.Token{AccessToken: "at", RefreshToken: "rt"}
+	if err := saveToken(file, token); err != nil {
+		t.Fatalf("saveToken failed: %v", err)
+	}
+	if err := os.Chmod(file, 0644); err != nil {
+		t.Fatalf("Chmod failed: %v", err)
+	}
+
+	logOutput := captureLog(t, func() {
+		if _, _, _, err := loadToken(file); err != nil {
+			t.Fatalf("loadToken failed: %v", err)
+		}
+	})
+	if !strings.Contains(logOutput, "readable by group or other") {
+		t.Fatalf("expected permission warning in log output, got: %q", logOutput)
+	}
+}
+
+func TestLoadTokenNoWarningForPrivatePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits do not apply on windows")
+	}
+	dir := t.TempDir()
+	file := filepath.Join(dir, "access.json")
+	token := &oauth2.Token{AccessToken: "at", RefreshToken: "rt"}
+	if err := saveToken(file, token); err != nil {
+		t.Fatalf("saveToken failed: %v", err)
+	}
+
+	logOutput := captureLog(t, func() {
+		if _, _, _, err := loadToken(file); err != nil {
+			t.Fatalf("loadToken failed: %v", err)
+		}
+	})
+	if strings.Contains(logOutput, "readable by group or other") {
+		t.Fatalf("expected no permission warning for 0600 file, got: %q", logOutput)
 	}
 }
 
