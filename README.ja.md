@@ -127,7 +127,7 @@ glasp push
 | `run-function` | | Apps Script の関数をリモート実行 |
 | `convert` | | プロジェクトファイルを変換（TS <-> GAS） |
 | `history` | | コマンド実行履歴を表示 |
-| `config init` | | `.glasp/config.json` を作成 |
+| `config init` | | `.glasp/config.json` と `.clasp.json`（未作成の場合）を作成 |
 | `version` | | glasp のバージョンを表示 |
 
 ## 設定
