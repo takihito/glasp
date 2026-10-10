@@ -173,6 +173,70 @@ func TestConfigInitRejectsOptionsWhenClaspConfigExists(t *testing.T) {
 	}
 }
 
+func TestConfigInitRejectsDanglingClaspSymlink(t *testing.T) {
+	root := useTempDir(t)
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.Symlink(outside, filepath.Join(root, ".clasp.json")); err != nil {
+		t.Skipf("symlink not supported: %v", err)
+	}
+
+	cmd := ConfigInitCmd{}
+	if err := cmd.Run(nil); err == nil {
+		t.Fatalf("expected error for dangling .clasp.json symlink")
+	}
+	if _, err := os.Lstat(outside); !os.IsNotExist(err) {
+		t.Fatalf("expected symlink target not to be created, lstat err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".glasp", "config.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected no config.json on failure, stat err=%v", err)
+	}
+}
+
+func TestConfigInitRejectsDirectoryClaspJSON(t *testing.T) {
+	root := useTempDir(t)
+	if err := os.Mkdir(filepath.Join(root, ".clasp.json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := ConfigInitCmd{}
+	if err := cmd.Run(nil); err == nil {
+		t.Fatalf("expected error when .clasp.json is a directory")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".glasp", "config.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected no config.json on failure, stat err=%v", err)
+	}
+}
+
+func TestConfigInitRejectsWhitespaceOptions(t *testing.T) {
+	cases := map[string]ConfigInitCmd{
+		"script id": {ScriptID: " "},
+		"rootDir":   {RootDir: " "},
+		"extension": {FileExtension: " "},
+		"dot only":  {FileExtension: "."},
+	}
+	for name, cmd := range cases {
+		t.Run(name, func(t *testing.T) {
+			root := useTempDir(t)
+			if err := cmd.Run(nil); err == nil {
+				t.Fatalf("expected error")
+			}
+			if _, err := os.Stat(filepath.Join(root, ".glasp")); !os.IsNotExist(err) {
+				t.Fatalf("expected no files created, stat err=%v", err)
+			}
+		})
+	}
+}
+
+func TestConfigInitRejectsWhitespaceOptionsWhenClaspExists(t *testing.T) {
+	root := useTempDir(t)
+	if err := os.WriteFile(filepath.Join(root, ".clasp.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := ConfigInitCmd{ScriptID: " "}
+	if err := cmd.Run(nil); err == nil {
+		t.Fatalf("expected error when option given but .clasp.json exists")
+	}
+}
+
 func TestConfigInitRejectsInvalidOptions(t *testing.T) {
 	cases := map[string]ConfigInitCmd{
 		"invalid script id":  {ScriptID: "abc/def"},

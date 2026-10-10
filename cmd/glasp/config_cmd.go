@@ -24,9 +24,7 @@ type ConfigInitCmd struct {
 
 // hasClaspOptions reports whether any .clasp.json field was given.
 func (c *ConfigInitCmd) hasClaspOptions() bool {
-	return strings.TrimSpace(c.RootDir) != "" ||
-		strings.TrimSpace(c.FileExtension) != "" ||
-		strings.TrimSpace(c.ScriptID) != ""
+	return c.RootDir != "" || c.FileExtension != "" || c.ScriptID != ""
 }
 
 // Run executes the config init command.
@@ -99,27 +97,34 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 // buildClaspConfig validates the options and returns the .clasp.json to write.
 func (c *ConfigInitCmd) buildClaspConfig() (*config.ClaspConfig, error) {
 	cfg := &config.ClaspConfig{}
-	if strings.TrimSpace(c.ScriptID) != "" {
+	if c.ScriptID != "" {
 		scriptID, err := validateScriptID(c.ScriptID)
 		if err != nil {
 			return nil, err
 		}
 		cfg.ScriptID = scriptID
 	}
-	if strings.TrimSpace(c.RootDir) != "" {
+	if c.RootDir != "" {
 		rootDir, err := validateConfigRootDir(c.RootDir)
 		if err != nil {
 			return nil, err
 		}
 		cfg.RootDir = rootDir
 	}
-	if strings.TrimSpace(c.FileExtension) != "" {
+	if c.FileExtension != "" {
 		fileExt := normalizeFileExtension(c.FileExtension)
+		if fileExt == "" {
+			return nil, fmt.Errorf("invalid fileExtension %q", c.FileExtension)
+		}
+		encoded, err := json.Marshal(fileExt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode fileExtension: %w", err)
+		}
 		if err := validateSupportedSyncFileExtension(fileExt); err != nil {
 			return nil, err
 		}
 		cfg.Extra = map[string]json.RawMessage{
-			"fileExtension": json.RawMessage(fmt.Sprintf("%q", fileExt)),
+			"fileExtension": json.RawMessage(encoded),
 		}
 	}
 	return cfg, nil
@@ -129,6 +134,9 @@ func (c *ConfigInitCmd) buildClaspConfig() (*config.ClaspConfig, error) {
 // project root.
 func validateConfigRootDir(raw string) (string, error) {
 	rootDir := strings.TrimSpace(raw)
+	if rootDir == "" {
+		return "", fmt.Errorf("invalid rootDir %q: must not be empty", raw)
+	}
 	if filepath.IsAbs(rootDir) || filepath.VolumeName(rootDir) != "" || strings.HasPrefix(rootDir, "/") || strings.HasPrefix(rootDir, `\`) {
 		return "", fmt.Errorf("invalid rootDir %q: must be a relative path inside the project", rootDir)
 	}
@@ -139,12 +147,30 @@ func validateConfigRootDir(raw string) (string, error) {
 	return rootDir, nil
 }
 
+// fileExists reports whether path exists as a regular file. Symlinks are
+// resolved; a dangling symlink or a non-regular file (e.g. a directory) is an
+// error, since writing through a dangling link would create a file at the
+// link target, which may be outside the current project.
 func fileExists(path string) (bool, error) {
-	if _, err := os.Stat(path); err != nil {
+	linfo, err := os.Lstat(path)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check %s: %w", path, err)
+	}
+	info := linfo
+	if linfo.Mode()&os.ModeSymlink != 0 {
+		info, err = os.Stat(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return false, fmt.Errorf("%s is a dangling symlink; remove it or fix its target before running config init", path)
+			}
+			return false, fmt.Errorf("failed to check %s: %w", path, err)
+		}
+	}
+	if !info.Mode().IsRegular() {
+		return false, fmt.Errorf("%s is not a regular file", path)
 	}
 	return true, nil
 }
