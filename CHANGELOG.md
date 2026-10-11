@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.2](https://github.com/takihito/glasp/compare/v0.5.1...v0.5.2) - 2026-10-02
+
+- build(deps): bump google.golang.org/api from 0.294.0 to 0.297.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/172
+- build(deps): bump Songmu/tagpr from 1.20.2 to 1.20.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/173
+- build(deps): bump step-security/harden-runner from 2.21.0 to 2.21.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/174
+- build(deps): bump golang.org/x/oauth2 from 0.36.0 to 0.37.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/175
+- build(deps): bump golang.org/x/sys from 0.47.0 to 0.48.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/176
+- build(deps): bump the codeql-action group across 1 directory with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/177
+- build(deps): bump Songmu/tagpr from 1.20.3 to 1.21.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/183
+- build(deps): bump google.golang.org/api from 0.297.0 to 0.299.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/184
+- build(deps): bump takihito/field-cage from 0.1.4 to 0.1.6 by @dependabot[bot] in https://github.com/takihito/glasp/pull/185
+- build(deps): bump takihito/field-cage/report from 0.1.4 to 0.1.6 by @dependabot[bot] in https://github.com/takihito/glasp/pull/186
+- fix(ci): tagpr の attestation 検証用エンドポイントを harden-runner で許可 by @takihito in https://github.com/takihito/glasp/pull/187
+- chore(ci): tagpr の harden-runner を一時的に audit モードへ変更 by @takihito in https://github.com/takihito/glasp/pull/188
+- fix(ci): tagpr の harden-runner を block に戻し sigstore 通信先を許可 by @takihito in https://github.com/takihito/glasp/pull/189
+- Harden local file sync: path traversal, symlinks, atomic writes by @takihito in https://github.com/takihito/glasp/pull/180
+
 ## [v0.5.1](https://github.com/takihito/glasp/compare/v0.5.0...v0.5.1) - 2026-09-07
 
 - docs: update version references from v0.4.0 to v0.5.0 by @takihito in https://github.com/takihito/glasp/pull/147
