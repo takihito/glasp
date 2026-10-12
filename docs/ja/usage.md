@@ -22,7 +22,7 @@ title: 使い方
 | `run-function` | | Apps Script 関数をリモート実行 |
 | `convert` | | プロジェクトファイルを変換 (TS ↔ GAS) |
 | `history` | | コマンド実行履歴を表示 |
-| `config init` | | `.glasp/config.json` を作成 |
+| `config init` | | `.clasp.json` と `.glasp/config.json` を作成（`.clasp.json` が既にあればエラー） |
 | `version` | | バージョンを表示 |
 
 ## Push

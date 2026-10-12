@@ -12,7 +12,7 @@ import (
 
 // ConfigCmd represents the 'config' subcommand.
 type ConfigCmd struct {
-	Init ConfigInitCmd `cmd:"" help:"Create .glasp/config.json and .clasp.json in the current directory."`
+	Init ConfigInitCmd `cmd:"" help:"Create .clasp.json and .glasp/config.json in the current directory. Fails if .clasp.json already exists."`
 }
 
 // ConfigInitCmd represents the 'config init' subcommand.
@@ -22,17 +22,12 @@ type ConfigInitCmd struct {
 	ScriptID      string `name:"script-id" help:"scriptId written to the new .clasp.json."`
 }
 
-// hasClaspOptions reports whether any .clasp.json field was given.
-func (c *ConfigInitCmd) hasClaspOptions() bool {
-	return c.RootDir != "" || c.FileExtension != "" || c.ScriptID != ""
-}
-
 // Run executes the config init command.
-// The current directory becomes the project root: each of .glasp/config.json
-// and .clasp.json is created only when missing, so running it in a directory
-// that already has one of them fills in the other. Creating .clasp.json here
-// keeps later commands (e.g. login) from resolving the project root to a
-// .clasp.json in a parent directory.
+// The current directory becomes the project root. .clasp.json is always
+// created and must not exist yet; an existing one is never overwritten and
+// is reported as an error. .glasp/config.json is created only when missing.
+// Creating .clasp.json here keeps later commands (e.g. login) from resolving
+// the project root to a .clasp.json in a parent directory.
 func (c *ConfigInitCmd) Run(rc *runContext) error {
 	projectRoot, err := os.Getwd()
 	if err != nil {
@@ -41,28 +36,21 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 	configPath := filepath.Join(projectRoot, ".glasp", "config.json")
 	claspPath := filepath.Join(projectRoot, ".clasp.json")
 
-	configExists, err := fileExists(configPath)
-	if err != nil {
-		return err
-	}
+	// Validate everything before writing so a failure leaves no partial state.
 	claspExists, err := fileExists(claspPath)
 	if err != nil {
 		return err
 	}
-
-	// Validate everything before writing so a bad option leaves no partial state.
-	if claspExists && c.hasClaspOptions() {
-		return fmt.Errorf(".clasp.json already exists: %s; --rootDir/--file-extension/--script-id are only applied when creating it", claspPath)
+	if claspExists {
+		return fmt.Errorf(".clasp.json already exists: %s; remove it first to re-initialize", claspPath)
 	}
-	if configExists && claspExists {
-		return fmt.Errorf("config already exists: %s and %s", configPath, claspPath)
+	configExists, err := fileExists(configPath)
+	if err != nil {
+		return err
 	}
-	var claspCfg *config.ClaspConfig
-	if !claspExists {
-		claspCfg, err = c.buildClaspConfig()
-		if err != nil {
-			return err
-		}
+	claspCfg, err := c.buildClaspConfig()
+	if err != nil {
+		return err
 	}
 
 	if !configExists {
@@ -78,18 +66,16 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 		fmt.Fprintf(stdout, "Created config at %s\n", configPath)
 	}
 
-	if claspCfg != nil {
-		parentRoot, err := config.FindProjectRoot()
-		if err != nil {
-			return err
-		}
-		if err := config.SaveClaspConfig(projectRoot, claspCfg); err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, "Created .clasp.json at %s\n", claspPath)
-		if parentRoot != "" && filepath.Clean(parentRoot) != filepath.Clean(projectRoot) {
-			fmt.Fprintf(stderr, "Note: a parent project also exists at %s; commands run here now use %s\n", parentRoot, projectRoot)
-		}
+	parentRoot, err := config.FindProjectRoot()
+	if err != nil {
+		return err
+	}
+	if err := config.SaveClaspConfig(projectRoot, claspCfg); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "Created .clasp.json at %s\n", claspPath)
+	if parentRoot != "" && filepath.Clean(parentRoot) != filepath.Clean(projectRoot) {
+		fmt.Fprintf(stderr, "Note: a parent project also exists at %s; commands run here now use %s\n", parentRoot, projectRoot)
 	}
 	return nil
 }

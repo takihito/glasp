@@ -134,15 +134,19 @@ func TestConfigInitCreatesClaspConfigWhenOnlyGlaspConfigExists(t *testing.T) {
 	}
 }
 
-func TestConfigInitKeepsExistingClaspConfig(t *testing.T) {
+func TestConfigInitRejectsExistingClaspConfig(t *testing.T) {
 	root := useTempDir(t)
 	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "existing", RootDir: "src"}); err != nil {
 		t.Fatalf("SaveClaspConfig failed: %v", err)
 	}
 
 	cmd := ConfigInitCmd{}
-	if err := cmd.Run(nil); err != nil {
-		t.Fatalf("ConfigInitCmd.Run failed: %v", err)
+	err := cmd.Run(nil)
+	if err == nil {
+		t.Fatalf("expected error when .clasp.json already exists")
+	}
+	if !strings.Contains(err.Error(), ".clasp.json already exists") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	raw := readClaspJSON(t, root)
@@ -150,8 +154,8 @@ func TestConfigInitKeepsExistingClaspConfig(t *testing.T) {
 	if !reflect.DeepEqual(raw, want) {
 		t.Fatalf("expected existing .clasp.json to be left untouched: got %#v", raw)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".glasp", "config.json")); err != nil {
-		t.Fatalf("expected config.json to be created: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".glasp")); !os.IsNotExist(err) {
+		t.Fatalf("expected no .glasp directory when .clasp.json exists, stat err=%v", err)
 	}
 }
 

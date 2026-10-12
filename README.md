@@ -127,7 +127,7 @@ glasp push
 | `run-function` | | Run an Apps Script function remotely |
 | `convert` | | Convert project files (TS <-> GAS) |
 | `history` | | Show command execution history |
-| `config init` | | Create `.glasp/config.json` and `.clasp.json` (if missing) |
+| `config init` | | Create `.clasp.json` and `.glasp/config.json` (fails if `.clasp.json` exists) |
 | `version` | | Show glasp version |
 
 ## Configuration
