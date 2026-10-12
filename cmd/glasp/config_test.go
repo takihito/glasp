@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/takihito/glasp/internal/config"
 )
@@ -134,15 +135,20 @@ func TestConfigInitCreatesClaspConfigWhenOnlyGlaspConfigExists(t *testing.T) {
 	}
 }
 
-func TestConfigInitKeepsExistingClaspConfig(t *testing.T) {
+func TestConfigInitRejectsExistingClaspConfig(t *testing.T) {
 	root := useTempDir(t)
 	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "existing", RootDir: "src"}); err != nil {
 		t.Fatalf("SaveClaspConfig failed: %v", err)
 	}
 
 	cmd := ConfigInitCmd{}
-	if err := cmd.Run(nil); err != nil {
-		t.Fatalf("ConfigInitCmd.Run failed: %v", err)
+	err := cmd.Run(nil)
+	if err == nil {
+		t.Fatalf("expected error when .clasp.json already exists")
+	}
+	wantMsg := ".clasp.json already exists: " + filepath.Join(root, ".clasp.json") + "; remove it first to re-initialize"
+	if err.Error() != wantMsg {
+		t.Fatalf("unexpected error:\n got: %v\nwant: %s", err, wantMsg)
 	}
 
 	raw := readClaspJSON(t, root)
@@ -150,8 +156,31 @@ func TestConfigInitKeepsExistingClaspConfig(t *testing.T) {
 	if !reflect.DeepEqual(raw, want) {
 		t.Fatalf("expected existing .clasp.json to be left untouched: got %#v", raw)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".glasp", "config.json")); err != nil {
-		t.Fatalf("expected config.json to be created: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".glasp")); !os.IsNotExist(err) {
+		t.Fatalf("expected no .glasp directory when .clasp.json exists, stat err=%v", err)
+	}
+}
+
+// TestConfigInitRejectionLeavesNoHistory covers the main.go flow: history is
+// recorded after Run, and must not create .glasp/ or .claspignore when
+// config init is rejected.
+func TestConfigInitRejectionLeavesNoHistory(t *testing.T) {
+	root := useTempDir(t)
+	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "existing"}); err != nil {
+		t.Fatalf("SaveClaspConfig failed: %v", err)
+	}
+
+	cmd := ConfigInitCmd{}
+	runErr := cmd.Run(nil)
+	if runErr == nil {
+		t.Fatalf("expected error when .clasp.json already exists")
+	}
+	recordRunHistory([]string{"config", "init"}, "config init", time.Millisecond, runErr, runArchiveMeta{})
+
+	for _, name := range []string{".glasp", ".claspignore"} {
+		if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected no %s after rejected config init, lstat err=%v", name, err)
+		}
 	}
 }
 

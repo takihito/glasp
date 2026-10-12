@@ -23,7 +23,7 @@ description: Usage instructions for glasp, the Google Apps Script CLI in Go.
 | `run-function` | | Run an Apps Script function remotely |
 | `convert` | | Convert project files (TS ↔ GAS) |
 | `history` | | Show command execution history |
-| `config init` | | Create `.glasp/config.json` and `.clasp.json` (if missing) |
+| `config init` | | Create `.clasp.json` and `.glasp/config.json` (fails if `.clasp.json` exists) |
 | `version` | | Show version |
 
 ## Push
@@ -243,14 +243,14 @@ Standard clasp configuration file. glasp reads the same format:
 }
 ```
 
-`glasp config init` makes the current directory a project root: it creates `.glasp/config.json` and, when missing, `.clasp.json`. Each file is created only if it does not exist yet, so an existing file is never overwritten. The `.clasp.json` fields can be set at creation time:
+`glasp config init` makes the current directory a project root: it creates `.clasp.json` and, when missing, `.glasp/config.json`. If `.clasp.json` already exists, the command fails without changing any file (an existing `.clasp.json` is never overwritten). The `.clasp.json` fields can be set at creation time:
 
 ```bash
 glasp config init --script-id SCRIPT_ID --rootDir src --file-extension ts
 ```
 
 - `--rootDir` must be a relative path inside the project.
-- The options are rejected when `.clasp.json` already exists.
+- An existing `.glasp/config.json` is kept as is.
 - Creating `.clasp.json` here prevents commands such as `glasp login` from resolving the project root to a `.clasp.json` in a parent directory (e.g. a stray `~/.clasp.json`).
 
 ### .claspignore

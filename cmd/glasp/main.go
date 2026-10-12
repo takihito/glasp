@@ -297,6 +297,12 @@ func selectedCommandName(ctx *kong.Context) string {
 }
 
 func recordRunHistory(args []string, commandName string, duration time.Duration, runErr error, archiveMeta runArchiveMeta) {
+	// A failed config init must leave the directory untouched; recording
+	// history would create .glasp/ and append to .claspignore in a project
+	// that only has .clasp.json.
+	if commandName == "config init" && runErr != nil {
+		return
+	}
 	projectRoot, err := config.FindProjectRoot()
 	if err != nil {
 		slog.Warn("failed to resolve project root for history", "error", err)
