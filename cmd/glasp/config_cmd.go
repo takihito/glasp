@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +28,8 @@ type ConfigInitCmd struct {
 // The current directory becomes the project root. .clasp.json is always
 // created and must not exist yet; an existing one is never overwritten and
 // is reported as an error. .glasp/config.json is created only when missing.
+// .clasp.json is written first with an exclusive create, so a concurrent
+// config init that wins the race makes this one fail instead of overwriting.
 // Creating .clasp.json here keeps later commands (e.g. login) from resolving
 // the project root to a .clasp.json in a parent directory.
 func (c *ConfigInitCmd) Run(rc *runContext) error {
@@ -42,7 +46,7 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 		return err
 	}
 	if claspExists {
-		return fmt.Errorf(".clasp.json already exists: %s; remove it first to re-initialize", claspPath)
+		return claspExistsError(claspPath)
 	}
 	configExists, err := fileExists(configPath)
 	if err != nil {
@@ -51,6 +55,21 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 	claspCfg, err := c.buildClaspConfig()
 	if err != nil {
 		return err
+	}
+
+	parentRoot, err := config.FindProjectRoot()
+	if err != nil {
+		return err
+	}
+	if err := config.CreateClaspConfig(projectRoot, claspCfg); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return claspExistsError(claspPath)
+		}
+		return err
+	}
+	fmt.Fprintf(stdout, "Created .clasp.json at %s\n", claspPath)
+	if parentRoot != "" && filepath.Clean(parentRoot) != filepath.Clean(projectRoot) {
+		fmt.Fprintf(stderr, "Note: a parent project also exists at %s; commands run here now use %s\n", parentRoot, projectRoot)
 	}
 
 	if !configExists {
@@ -65,19 +84,11 @@ func (c *ConfigInitCmd) Run(rc *runContext) error {
 		}
 		fmt.Fprintf(stdout, "Created config at %s\n", configPath)
 	}
-
-	parentRoot, err := config.FindProjectRoot()
-	if err != nil {
-		return err
-	}
-	if err := config.SaveClaspConfig(projectRoot, claspCfg); err != nil {
-		return err
-	}
-	fmt.Fprintf(stdout, "Created .clasp.json at %s\n", claspPath)
-	if parentRoot != "" && filepath.Clean(parentRoot) != filepath.Clean(projectRoot) {
-		fmt.Fprintf(stderr, "Note: a parent project also exists at %s; commands run here now use %s\n", parentRoot, projectRoot)
-	}
 	return nil
+}
+
+func claspExistsError(claspPath string) error {
+	return fmt.Errorf(".clasp.json already exists: %s; remove it first to re-initialize", claspPath)
 }
 
 // buildClaspConfig validates the options and returns the .clasp.json to write.

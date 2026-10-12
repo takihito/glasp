@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -302,5 +304,40 @@ func TestClaspIgnoreFromDocsSample(t *testing.T) {
 				t.Errorf("Path '%s': expected ignored=%t, but got %t", tc.path, tc.ignored, got)
 			}
 		})
+	}
+}
+
+func TestCreateClaspConfigWritesNewFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := CreateClaspConfig(dir, &ClaspConfig{ScriptID: "new-id", RootDir: "src"}); err != nil {
+		t.Fatalf("CreateClaspConfig failed: %v", err)
+	}
+	loaded, err := LoadClaspConfig(dir)
+	if err != nil {
+		t.Fatalf("LoadClaspConfig failed: %v", err)
+	}
+	if loaded.ScriptID != "new-id" || loaded.RootDir != "src" {
+		t.Fatalf("unexpected config: %+v", loaded)
+	}
+}
+
+func TestCreateClaspConfigDoesNotOverwrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".clasp.json")
+	original := []byte(`{"scriptId":"existing"}`)
+	if err := os.WriteFile(path, original, 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	err := CreateClaspConfig(dir, &ClaspConfig{ScriptID: "other"})
+	if !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("expected fs.ErrExist, got %v", err)
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read failed: %v", readErr)
+	}
+	if string(data) != string(original) {
+		t.Fatalf("expected existing .clasp.json to be left untouched, got %s", data)
 	}
 }

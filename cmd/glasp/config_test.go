@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/takihito/glasp/internal/config"
 )
@@ -145,8 +146,9 @@ func TestConfigInitRejectsExistingClaspConfig(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error when .clasp.json already exists")
 	}
-	if !strings.Contains(err.Error(), ".clasp.json already exists") {
-		t.Fatalf("unexpected error: %v", err)
+	wantMsg := ".clasp.json already exists: " + filepath.Join(root, ".clasp.json") + "; remove it first to re-initialize"
+	if err.Error() != wantMsg {
+		t.Fatalf("unexpected error:\n got: %v\nwant: %s", err, wantMsg)
 	}
 
 	raw := readClaspJSON(t, root)
@@ -156,6 +158,29 @@ func TestConfigInitRejectsExistingClaspConfig(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".glasp")); !os.IsNotExist(err) {
 		t.Fatalf("expected no .glasp directory when .clasp.json exists, stat err=%v", err)
+	}
+}
+
+// TestConfigInitRejectionLeavesNoHistory covers the main.go flow: history is
+// recorded after Run, and must not create .glasp/ or .claspignore when
+// config init is rejected.
+func TestConfigInitRejectionLeavesNoHistory(t *testing.T) {
+	root := useTempDir(t)
+	if err := config.SaveClaspConfig(root, &config.ClaspConfig{ScriptID: "existing"}); err != nil {
+		t.Fatalf("SaveClaspConfig failed: %v", err)
+	}
+
+	cmd := ConfigInitCmd{}
+	runErr := cmd.Run(nil)
+	if runErr == nil {
+		t.Fatalf("expected error when .clasp.json already exists")
+	}
+	recordRunHistory([]string{"config", "init"}, "config init", time.Millisecond, runErr, runArchiveMeta{})
+
+	for _, name := range []string{".glasp", ".claspignore"} {
+		if _, err := os.Lstat(filepath.Join(root, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected no %s after rejected config init, lstat err=%v", name, err)
+		}
 	}
 }
 

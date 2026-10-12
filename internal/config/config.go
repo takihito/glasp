@@ -115,6 +115,46 @@ func LoadClaspConfig(dir string) (*ClaspConfig, error) {
 // SaveClaspConfig saves the ClaspConfig to a .clasp.json file in the specified directory.
 func SaveClaspConfig(dir string, cfg *ClaspConfig) error {
 	filePath := filepath.Join(dir, claspConfigFileName)
+	data, err := marshalClaspConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", filePath, err)
+	} else {
+		slog.Info("created clasp config file", "path", filePath)
+	}
+	return nil
+}
+
+// CreateClaspConfig writes a new .clasp.json in dir and fails if it already
+// exists. O_CREATE|O_EXCL makes the existence check and the creation atomic,
+// and also rejects an existing symlink (dangling or not) at that path.
+// The returned error wraps fs.ErrExist when the file already exists.
+func CreateClaspConfig(dir string, cfg *ClaspConfig) error {
+	filePath := filepath.Join(dir, claspConfigFileName)
+	data, err := marshalClaspConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create %s: %w", filePath, err)
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return fmt.Errorf("failed to write %s: %w", filePath, err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close %s: %w", filePath, err)
+	}
+	slog.Info("created clasp config file", "path", filePath)
+	return nil
+}
+
+func marshalClaspConfig(cfg *ClaspConfig) ([]byte, error) {
 	payload := map[string]any{
 		"scriptId": cfg.ScriptID,
 	}
@@ -133,15 +173,9 @@ func SaveClaspConfig(dir string, cfg *ClaspConfig) error {
 
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal ClaspConfig: %w", err)
+		return nil, fmt.Errorf("failed to marshal ClaspConfig: %w", err)
 	}
-
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", filePath, err)
-	} else {
-		slog.Info("created clasp config file", "path", filePath)
-	}
-	return nil
+	return data, nil
 }
 
 // ClaspIgnore represents the .claspignore patterns.
