@@ -94,20 +94,18 @@ export GLASP_CLIENT_SECRET="your-client-secret"
 # インストール（Linux / macOS）
 curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
-# Google アカウントにログイン
-glasp login
+# プロジェクトディレクトリを作成
+mkdir project-gas
+cd project-gas
 
-# または、clasp の認証情報がある場合:
+# .clasp.json を作成（スクリプト ID と rootDir を指定）
+glasp config init --script-id=<SCRIPT_ID> --rootDir=src
+
+# clasp の認証情報でログイン（ブラウザでログインする場合は `glasp login`）
 glasp login --auth ~/.clasprc.json
 
-# 既存のプロジェクトをクローン
-glasp clone <script-id>
-
-# リモートファイルを取得
+# リモートファイルを src/ に取得
 glasp pull
-
-# ローカルファイルをアップロード
-glasp push
 ```
 
 ## コマンド一覧

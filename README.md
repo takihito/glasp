@@ -94,20 +94,18 @@ Environment variables take precedence over embedded credentials. See [Google Clo
 # Install (Linux / macOS)
 curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
-# Login to Google account
-glasp login
+# Create a project directory
+mkdir project-gas
+cd project-gas
 
-# Or, if you already have clasp credentials:
+# Create .clasp.json (set the script ID and rootDir)
+glasp config init --script-id=<SCRIPT_ID> --rootDir=src
+
+# Log in by reusing clasp credentials (or run `glasp login` for the browser flow)
 glasp login --auth ~/.clasprc.json
 
-# Clone an existing project
-glasp clone <script-id>
-
-# Pull remote files
+# Pull remote files into src/
 glasp pull
-
-# Push local files
-glasp push
 ```
 
 ## Commands
