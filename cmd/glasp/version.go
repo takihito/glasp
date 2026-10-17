@@ -6,7 +6,7 @@ import (
 
 var (
 	// Version is the semantic version. Overridden at build time via ldflags.
-	Version = "v0.5.2"
+	Version = "v0.5.3"
 	// Commit is the git commit hash. Overridden at build time via ldflags.
 	Commit = "none"
 	// Date is the build date. Overridden at build time via ldflags.
