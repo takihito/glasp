@@ -28,15 +28,18 @@ Node.js ベースの [clasp](https://github.com/google/clasp) をシングルバ
 # インストール（Linux / macOS）
 curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
-# ログイン
-glasp login
+# プロジェクトディレクトリを作成
+mkdir project-gas
+cd project-gas
 
-# 既存プロジェクトのクローン
-glasp clone <script-id>
+# .clasp.json を作成（スクリプト ID と rootDir を指定）
+glasp config init --script-id=<SCRIPT_ID> --rootDir=src
 
-# ファイルの取得・反映
+# clasp の認証情報でログイン（ブラウザでログインする場合は `glasp login`）
+glasp login --auth ~/.clasprc.json
+
+# リモートファイルを src/ に取得
 glasp pull
-glasp push
 ```
 
 デフォルトでは `~/.local/bin` にインストールされます。変更する場合:

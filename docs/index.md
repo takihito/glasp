@@ -28,15 +28,18 @@ A single-binary, high-performance replacement for Node.js-based [clasp](https://
 # Install (Linux / macOS)
 curl -sSL https://takihito.github.io/glasp/install.sh | sh
 
-# Login
-glasp login
+# Create a project directory
+mkdir project-gas
+cd project-gas
 
-# Clone an existing project
-glasp clone <script-id>
+# Create .clasp.json (set the script ID and rootDir)
+glasp config init --script-id=<SCRIPT_ID> --rootDir=src
 
-# Pull and push files
+# Log in by reusing clasp credentials (or run `glasp login` for the browser flow)
+glasp login --auth ~/.clasprc.json
+
+# Pull remote files into src/
 glasp pull
-glasp push
 ```
 
 Installs to `~/.local/bin` by default. To change the install directory:
