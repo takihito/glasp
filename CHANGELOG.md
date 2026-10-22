@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.3](https://github.com/takihito/glasp/compare/v0.5.2...v0.5.3) - 2026-10-22
+
+- build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/195
+- docs: rewrite Quick Start around config init by @takihito in https://github.com/takihito/glasp/pull/201
+
 ## [v0.5.2](https://github.com/takihito/glasp/compare/v0.5.1...v0.5.2) - 2026-10-12
 
 - build(deps): bump google.golang.org/api from 0.294.0 to 0.297.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/172
