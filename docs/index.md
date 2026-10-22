@@ -33,7 +33,7 @@ mkdir project-gas
 cd project-gas
 
 # Create .clasp.json (set the script ID and rootDir)
-glasp config init --script-id=<SCRIPT_ID> --rootDir=src
+glasp config init --script-id=SCRIPT_ID --rootDir=src
 
 # Log in by reusing clasp credentials (or run `glasp login` for the browser flow)
 glasp login --auth ~/.clasprc.json

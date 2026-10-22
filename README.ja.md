@@ -99,7 +99,7 @@ mkdir project-gas
 cd project-gas
 
 # .clasp.json を作成（スクリプト ID と rootDir を指定）
-glasp config init --script-id=<SCRIPT_ID> --rootDir=src
+glasp config init --script-id=SCRIPT_ID --rootDir=src
 
 # clasp の認証情報でログイン（ブラウザでログインする場合は `glasp login`）
 glasp login --auth ~/.clasprc.json
