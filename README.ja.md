@@ -23,7 +23,7 @@ Node.js ベースの [clasp](https://github.com/google/clasp) を置き換える
 **Linux / macOS:**
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 ```
 
 **Windows (PowerShell):**
@@ -44,8 +44,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ```bash
 # `GLASP_INSTALL_DIR` 環境変数を設定してからインストールスクリプトを実行してください。例: `/usr/local/bin` にインストールする場合:
-curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
+
+`cosign` がインストールされていれば、インストーラーがリリースの署名を検証します。詳しくは [ダウンロードの検証](https://takihito.github.io/glasp/ja/installation) を参照してください。
 
 ### Homebrew（macOS / Linux）
 
@@ -92,7 +94,7 @@ export GLASP_CLIENT_SECRET="your-client-secret"
 
 ```bash
 # インストール（Linux / macOS）
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 
 # Google アカウントにログイン
 glasp login
@@ -355,6 +357,8 @@ steps:
         api.github.com:443
         github.com:443
         objects.githubusercontent.com:443
+        release-assets.githubusercontent.com:443
+        tuf-repo-cdn.sigstore.dev:443
         script.googleapis.com:443
         www.googleapis.com:443
         oauth2.googleapis.com:443
@@ -371,7 +375,8 @@ steps:
 | Endpoint | 用途 |
 | --- | --- |
 | `api.github.com:443` | アクションインストーラが最新リリース情報を取得 |
-| `github.com:443`, `objects.githubusercontent.com:443` | glasp バイナリのダウンロード |
+| `github.com:443`, `objects.githubusercontent.com:443`, `release-assets.githubusercontent.com:443` | glasp バイナリと cosign のダウンロード |
+| `tuf-repo-cdn.sigstore.dev:443` | cosign がリリース署名の検証に使う Sigstore の信頼ルートを取得 |
 | `script.googleapis.com:443` | Apps Script API（`push`、`pull`、デプロイメント、`run-function`） |
 | `www.googleapis.com:443` | プロジェクト作成・clone 時の Drive スコープ |
 | `oauth2.googleapis.com:443` | OAuth アクセストークンのリフレッシュ |

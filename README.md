@@ -23,7 +23,7 @@ A single-binary alternative that replaces Node.js-based [clasp](https://github.c
 **Linux / macOS:**
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 ```
 
 **Windows (PowerShell):**
@@ -44,8 +44,10 @@ To change the install directory:
 
 ```bash
 # Set the `GLASP_INSTALL_DIR` environment variable before running the install script. Example: to install to `/usr/local/bin`:
-curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
+
+The installer verifies the release signature when `cosign` is installed. See [Verifying downloads](https://takihito.github.io/glasp/installation#verifying-downloads).
 
 ### Homebrew (macOS / Linux)
 
@@ -92,7 +94,7 @@ Environment variables take precedence over embedded credentials. See [Google Clo
 
 ```bash
 # Install (Linux / macOS)
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 
 # Login to Google account
 glasp login
@@ -355,6 +357,8 @@ steps:
         api.github.com:443
         github.com:443
         objects.githubusercontent.com:443
+        release-assets.githubusercontent.com:443
+        tuf-repo-cdn.sigstore.dev:443
         script.googleapis.com:443
         www.googleapis.com:443
         oauth2.googleapis.com:443
@@ -371,7 +375,8 @@ Endpoint reference:
 | Endpoint | Why glasp needs it |
 | --- | --- |
 | `api.github.com:443` | The action installer queries the latest release metadata. |
-| `github.com:443`, `objects.githubusercontent.com:443` | Downloading the released `glasp` binary. |
+| `github.com:443`, `objects.githubusercontent.com:443`, `release-assets.githubusercontent.com:443` | Downloading the released `glasp` binary and cosign. |
+| `tuf-repo-cdn.sigstore.dev:443` | cosign fetches the Sigstore trust root to verify the release signature. |
 | `script.googleapis.com:443` | Apps Script API (`push`, `pull`, deployments, `run-function`). |
 | `www.googleapis.com:443` | Drive scope used during project creation/clone. |
 | `oauth2.googleapis.com:443` | Refreshing the OAuth access token. |
