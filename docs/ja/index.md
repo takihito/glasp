@@ -26,7 +26,7 @@ Node.js ベースの [clasp](https://github.com/google/clasp) をシングルバ
 
 ```bash
 # インストール（Linux / macOS）
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 
 # プロジェクトディレクトリを作成
 mkdir project-gas
@@ -45,7 +45,7 @@ glasp pull
 デフォルトでは `~/.local/bin` にインストールされます。変更する場合:
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex` でインストールできます。

@@ -10,7 +10,7 @@ title: インストール
 **Linux / macOS:**
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 ```
 
 **Windows (PowerShell):**
@@ -30,7 +30,37 @@ export PATH="$HOME/.local/bin:$PATH"
 インストール先を変更する場合:
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+```
+
+## ダウンロードの検証
+
+リリースの `checksums.txt` には、このリポジトリのリリースワークフローが [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) で署名しています（キーレス署名）。署名は TLS 接続とは別に Sigstore の信頼ルートで検証するため、通信を傍受されて改ざんされたダウンロードも検出できます。
+
+- **クイックインストール:** `cosign` がインストールされていれば、インストーラーが自動で署名を検証します。ない場合は警告を出して続行します。`cosign` がないときに失敗させるには `GLASP_VERIFY_SIGNATURE=required` を指定します:
+
+  ```bash
+  curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_VERIFY_SIGNATURE=required sh
+  ```
+
+- **GitHub Actions:** `takihito/glasp` アクションは `cosign` をインストールし、常に署名を検証します。
+
+`curl | sh` では、インストーラースクリプト自体は守れません。ダウンロードを改ざんできる攻撃者は `install.sh` も差し替えられるためです。OS と CA 証明書を最新に保ち、より確実にするには手動でダウンロードして検証してください:
+
+```bash
+VERSION=v0.5.2
+ARTIFACT=glasp_${VERSION}_linux_amd64.tar.gz   # OS/アーキテクチャに合わせて選択
+BASE=https://github.com/takihito/glasp/releases/download/${VERSION}
+curl -fsSLO "${BASE}/${ARTIFACT}"
+curl -fsSLO "${BASE}/checksums.txt"
+curl -fsSLO "${BASE}/checksums.txt.sigstore.json"
+
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/takihito/glasp/.github/workflows/release.yml@refs/tags/${VERSION}" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+grep "  ${ARTIFACT}\$" checksums.txt | shasum -a 256 -c -   # または: sha256sum -c -
 ```
 
 ## Homebrew（macOS / Linux）

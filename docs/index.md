@@ -26,7 +26,7 @@ A single-binary, high-performance replacement for Node.js-based [clasp](https://
 
 ```bash
 # Install (Linux / macOS)
-curl -sSL https://takihito.github.io/glasp/install.sh | sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | sh
 
 # Create a project directory
 mkdir project-gas
@@ -45,7 +45,7 @@ glasp pull
 Installs to `~/.local/bin` by default. To change the install directory:
 
 ```bash
-curl -sSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://takihito.github.io/glasp/install.sh | GLASP_INSTALL_DIR=/usr/local/bin sh
 ```
 
 > **Windows:** `irm https://takihito.github.io/glasp/install.ps1 | iex`

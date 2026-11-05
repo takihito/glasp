@@ -50,10 +50,17 @@ inputs:
 runs:
   using: composite
   steps:
+    # cosign verifies the signature of checksums.txt against the Sigstore
+    # trust root, so a tampered release download is rejected even if the TLS
+    # connection to GitHub were intercepted.
+    - name: Install cosign
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
     - name: Install glasp
       shell: bash
       env:
         GLASP_VERSION: ${{ inputs.version }}
+        GLASP_VERIFY_SIGNATURE: required
         GLASP_INSTALL_DIR: ${{ runner.temp }}/glasp-bin
         GLASP_ACTION_PATH: ${{ github.action_path }}
       run: |
