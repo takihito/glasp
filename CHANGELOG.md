@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.3](https://github.com/takihito/glasp/compare/v0.5.2...v0.5.3) - 2026-11-17
+
+- build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/195
+- docs: rewrite Quick Start around config init by @takihito in https://github.com/takihito/glasp/pull/201
+- build(deps): bump actions/upload-artifact from 7.0.1 to 7.0.2 by @dependabot[bot] in https://github.com/takihito/glasp/pull/197
+- build(deps): bump golang.org/x/sys from 0.48.0 to 0.49.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/200
+- feat(install): verify release signature with cosign by @takihito in https://github.com/takihito/glasp/pull/207
+- build(deps): bump the codeql-action group across 1 directory with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/204
+- build(deps): bump goreleaser/goreleaser-action from 7.2.3 to 7.3.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/206
+- build(deps): bump google.golang.org/api from 0.300.0 to 0.310.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/210
+- build(deps): bump github.com/alecthomas/kong from 1.16.1 to 1.17.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/211
+- build(deps): bump step-security/harden-runner from 2.21.1 to 2.22.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/212
+- build(deps): bump Songmu/tagpr from 1.21.1 to 1.21.4 by @dependabot[bot] in https://github.com/takihito/glasp/pull/213
+- build(deps): bump google.golang.org/api from 0.310.0 to 0.311.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/214
+- build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/215
+- build(deps): bump Songmu/tagpr from 1.21.4 to 1.22.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/216
+- build(deps): bump sigstore/cosign-installer from 4.1.2 to 4.1.3 by @dependabot[bot] in https://github.com/takihito/glasp/pull/217
+- build(deps): bump step-security/harden-runner from 2.22.3 to 2.22.4 by @dependabot[bot] in https://github.com/takihito/glasp/pull/218
+- build(deps): bump ossf/scorecard-action from 2.4.4 to 2.5.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/219
+- build(deps): bump golang.org/x/oauth2 from 0.37.0 to 0.38.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/220
+- build(deps): bump google.golang.org/api from 0.311.0 to 0.315.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/221
+- build(deps): bump golang.org/x/sys from 0.49.0 to 0.50.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/222
+
 ## [v0.5.2](https://github.com/takihito/glasp/compare/v0.5.1...v0.5.2) - 2026-10-12
 
 - build(deps): bump google.golang.org/api from 0.294.0 to 0.297.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/172
