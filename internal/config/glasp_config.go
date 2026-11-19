@@ -51,9 +51,51 @@ func EnsureGlaspDir(projectRoot string) error {
 
 // ensureGlaspGitignore creates .glasp/.gitignore when it does not exist. An
 // existing file is never overwritten so that user customisations survive.
-// O_EXCL makes the create atomic and refuses to follow a pre-existing symlink.
+//
+// The content is written and closed in a temporary file first and then
+// published with a hard link. os.Link fails when the destination exists
+// (including a symlink, which it does not follow), so publishing is atomic
+// and never replaces a user's file. A concurrent caller therefore either
+// publishes the complete file itself or sees one that is already complete,
+// and a failed write never leaves a truncated .gitignore behind that later
+// calls would accept as initialized.
 func ensureGlaspGitignore(glaspDir string) error {
 	path := filepath.Join(glaspDir, ".gitignore")
+	if _, err := os.Lstat(path); err == nil {
+		return nil
+	}
+
+	tmp, err := os.CreateTemp(glaspDir, ".gitignore.tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for %s: %w", path, err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.WriteString(glaspGitignoreContent); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to write %s: %w", tmpPath, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close %s: %w", tmpPath, err)
+	}
+	if err := os.Chmod(tmpPath, 0644); err != nil {
+		return fmt.Errorf("failed to chmod %s: %w", tmpPath, err)
+	}
+
+	linkErr := os.Link(tmpPath, path)
+	if linkErr == nil || os.IsExist(linkErr) {
+		return nil
+	}
+	// Hard links are unavailable on some filesystems. Fall back to an
+	// exclusive create, removing the file again if it cannot be completed.
+	return writeGitignoreExclusive(path)
+}
+
+// writeGitignoreExclusive creates path with O_EXCL and writes the default
+// content. On a write or close failure the partial file is removed so that a
+// later call retries instead of accepting an incomplete file.
+func writeGitignoreExclusive(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		if os.IsExist(err) {
@@ -63,9 +105,11 @@ func ensureGlaspGitignore(glaspDir string) error {
 	}
 	if _, err := f.WriteString(glaspGitignoreContent); err != nil {
 		f.Close()
+		os.Remove(path)
 		return fmt.Errorf("failed to write %s: %w", path, err)
 	}
 	if err := f.Close(); err != nil {
+		os.Remove(path)
 		return fmt.Errorf("failed to close %s: %w", path, err)
 	}
 	return nil

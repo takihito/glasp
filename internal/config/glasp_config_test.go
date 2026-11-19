@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -256,5 +257,83 @@ func TestGlaspGitignoreExcludesSecretsFromGit(t *testing.T) {
 		if ignored != wantIgnored {
 			t.Errorf("%s: ignored=%v, want %v", rel, ignored, wantIgnored)
 		}
+	}
+}
+
+func TestEnsureGlaspGitignoreConcurrentCallersSeeCompleteFile(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), ".glasp")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	path := filepath.Join(dir, ".gitignore")
+
+	const workers = 16
+	var wg sync.WaitGroup
+	errs := make(chan string, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := ensureGlaspGitignore(dir); err != nil {
+				errs <- "ensureGlaspGitignore failed: " + err.Error()
+				return
+			}
+			// Once a caller returns, the file must already be complete.
+			data, err := os.ReadFile(path)
+			if err != nil {
+				errs <- "read failed: " + err.Error()
+				return
+			}
+			if string(data) != glaspGitignoreContent {
+				errs <- "incomplete .gitignore observed: " + string(data)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Error(e)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir failed: %v", err)
+	}
+	for _, e := range entries {
+		if e.Name() != ".gitignore" {
+			t.Errorf("unexpected leftover file in .glasp/: %s", e.Name())
+		}
+	}
+}
+
+func TestWriteGitignoreExclusiveKeepsExistingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".gitignore")
+	custom := "custom\n"
+	if err := os.WriteFile(path, []byte(custom), 0644); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	if err := writeGitignoreExclusive(path); err != nil {
+		t.Fatalf("writeGitignoreExclusive failed: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read failed: %v", err)
+	}
+	if string(data) != custom {
+		t.Errorf("expected existing file to be preserved, got: %q", string(data))
+	}
+}
+
+func TestWriteGitignoreExclusiveCreatesFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".gitignore")
+	if err := writeGitignoreExclusive(path); err != nil {
+		t.Fatalf("writeGitignoreExclusive failed: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read failed: %v", err)
+	}
+	if string(data) != glaspGitignoreContent {
+		t.Errorf("unexpected content: %q", string(data))
 	}
 }
