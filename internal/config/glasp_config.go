@@ -14,10 +14,24 @@ const (
 	glaspConfigFileName = "config.json"
 )
 
+// glaspGitignoreContent is written to .glasp/.gitignore. It keeps the OAuth
+// token cache (access.json), command history and archives out of Git while
+// still allowing the shareable project settings (config.json) and this file
+// itself to be committed. Ignoring everything by default ("*") also covers
+// any file glasp adds to .glasp/ in the future.
+const glaspGitignoreContent = `# Managed by glasp. Keeps credentials (access.json), history and archives out of Git.
+# config.json holds shareable project settings and may be committed.
+*
+!.gitignore
+!config.json
+`
+
 // EnsureGlaspDir creates the .glasp/ directory under projectRoot if it does
 // not already exist. When the directory is newly created it also ensures that
 // .claspignore contains a ".glasp/" entry so that clasp will not push glasp's
-// internal files.
+// internal files. It always ensures .glasp/.gitignore exists so that the OAuth
+// token cache is not committed to Git, including for directories created by
+// older glasp versions.
 func EnsureGlaspDir(projectRoot string) error {
 	dir := filepath.Join(projectRoot, glaspConfigDirName)
 	created := false
@@ -31,6 +45,72 @@ func EnsureGlaspDir(projectRoot string) error {
 		if err := ensureClaspIgnoreEntry(projectRoot, glaspConfigDirName+"/"); err != nil {
 			return err
 		}
+	}
+	return ensureGlaspGitignore(dir)
+}
+
+// ensureGlaspGitignore creates .glasp/.gitignore when it does not exist. An
+// existing file is never overwritten so that user customisations survive.
+//
+// The content is written and closed in a temporary file first and then
+// published with a hard link. os.Link fails when the destination exists
+// (including a symlink, which it does not follow), so publishing is atomic
+// and never replaces a user's file. A concurrent caller therefore either
+// publishes the complete file itself or sees one that is already complete,
+// and a failed write never leaves a truncated .gitignore behind that later
+// calls would accept as initialized.
+func ensureGlaspGitignore(glaspDir string) error {
+	path := filepath.Join(glaspDir, ".gitignore")
+	if _, err := os.Lstat(path); err == nil {
+		return nil
+	}
+
+	tmp, err := os.CreateTemp(glaspDir, ".gitignore.tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for %s: %w", path, err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.WriteString(glaspGitignoreContent); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to write %s: %w", tmpPath, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close %s: %w", tmpPath, err)
+	}
+	if err := os.Chmod(tmpPath, 0644); err != nil {
+		return fmt.Errorf("failed to chmod %s: %w", tmpPath, err)
+	}
+
+	linkErr := os.Link(tmpPath, path)
+	if linkErr == nil || os.IsExist(linkErr) {
+		return nil
+	}
+	// Hard links are unavailable on some filesystems. Fall back to an
+	// exclusive create, removing the file again if it cannot be completed.
+	return writeGitignoreExclusive(path)
+}
+
+// writeGitignoreExclusive creates path with O_EXCL and writes the default
+// content. On a write or close failure the partial file is removed so that a
+// later call retries instead of accepting an incomplete file.
+func writeGitignoreExclusive(path string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to create %s: %w", path, err)
+	}
+	if _, err := f.WriteString(glaspGitignoreContent); err != nil {
+		f.Close()
+		os.Remove(path)
+		return fmt.Errorf("failed to write %s: %w", path, err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(path)
+		return fmt.Errorf("failed to close %s: %w", path, err)
 	}
 	return nil
 }

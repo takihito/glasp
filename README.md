@@ -161,8 +161,11 @@ glasp-specific directory (created automatically, excluded from push):
 | `config.json` | glasp-specific settings (archive config) |
 | `history.jsonl` | Command execution history (JSON Lines) |
 | `archive/` | Push/pull archives |
+| `.gitignore` | Keeps everything except `config.json` out of Git (created automatically) |
 
 The `.glasp/` directory is created with `0700` permissions. When first created, glasp automatically adds `.glasp/` to `.claspignore` so that clasp will not push glasp's internal files.
+
+glasp also creates `.glasp/.gitignore` (if it does not exist) so that the OAuth token cache (`access.json`), history and archives are never committed to Git, while `config.json` can still be shared. Directories created by older versions get this file the next time a glasp command runs in the project. An existing `.glasp/.gitignore` is never overwritten. If `access.json` was already committed, treat the token as leaked: remove glasp's access in your Google Account (Security → Third-party apps & services) to revoke the refresh token, untrack the file with `git rm --cached .glasp/access.json`, and log in again. Note that `glasp logout` only deletes the local file and does not revoke the token, and that the file remains in Git history.
 
 ## Push
 
