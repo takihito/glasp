@@ -15,7 +15,9 @@ inputs:
       Store this value as a repository secret (e.g. GLASP_AUTH) and reference it
       via secrets.GLASP_AUTH in your workflow. When provided, the value is
       exported as the GLASP_AUTH environment variable so that subsequent glasp
-      commands authenticate without a --auth flag.
+      commands authenticate without a --auth flag. The token and client secret
+      values inside the JSON are also registered as log masks. Note that the
+      exported variable is visible to every later step in the same job.
     required: false
     default: ''
   working-directory:
@@ -74,6 +76,17 @@ runs:
       env:
         _INPUT_AUTH: ${{ inputs.auth }}
       run: |
+        # Register each credential value inside the JSON as its own mask.
+        # The secret is multi-line JSON, which GitHub's log redaction does
+        # not reliably match as a whole; single-line token values are.
+        printf '%s' "$_INPUT_AUTH" \
+          | { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
+          | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/' \
+          | while IFS= read -r _value; do
+              if [ -n "$_value" ]; then
+                printf '::add-mask::%s\n' "$_value"
+              fi
+            done
         delimiter="GLASP_AUTH_$(LC_ALL=C tr -dc 'a-f0-9' < /dev/urandom | head -c 16 2>/dev/null || date +%s)"
         printf 'GLASP_AUTH<<%s\n%s\n%s\n' "$delimiter" "$_INPUT_AUTH" "$delimiter" >> "$GITHUB_ENV"
 

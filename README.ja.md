@@ -319,7 +319,7 @@ steps:
   - uses: takihito/glasp@v0.5.0
     with:
       version: 'v0.5.0'
-      auth: '${{ secrets.CLASPRC_JSON }}'  # 登録したシークレットを指定
+      auth: '${{ secrets.GLASP_AUTH }}'  # 登録したシークレットを指定
   - run: glasp push
 ```
 
@@ -333,7 +333,7 @@ steps:
 - uses: takihito/glasp@v0.5.0
   with:
     version: 'v0.5.0'
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
     working-directory: 'apps-script/dir' # .clasp.json があるディレクトリ（省略可）
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # OAuth2 クライアントIDを指定する場合（省略可）
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # OAuth2 クライアントシークレットを指定する場合（省略可）

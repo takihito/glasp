@@ -58,11 +58,11 @@ export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push # clasp login の場合
 
 ### 2. repository secret に追加する
 
-`.glasp/access.json`, `.clasprc.json` の JSON 内容をコピーし `CLASPRC_JSON` という名前の repository secret として登録します：
+`.glasp/access.json`, `.clasprc.json` の JSON 内容をコピーし `GLASP_AUTH` という名前の repository secret として登録します：
 
 **GitHub → リポジトリ → Settings → Secrets and variables → Actions → New repository secret**
 
-- Name: `CLASPRC_JSON`
+- Name: `GLASP_AUTH`
 - Value: *（JSON の内容を貼り付け）*
 
 ### 3. ワークフローに Action を追加する
@@ -74,7 +74,7 @@ steps:
     with:
       version: 'v0.5.0'
 {% raw %}
-      auth: '${{ secrets.CLASPRC_JSON }}'  # 登録したシークレットを指定しglaspに認証情報を渡す
+      auth: '${{ secrets.GLASP_AUTH }}'  # 登録したシークレットを指定しglaspに認証情報を渡す
 {% endraw %}
   - run: glasp push
 ```
@@ -100,7 +100,7 @@ jobs:
         with:
           version: 'v0.5.0'
 {% raw %}
-          auth: '${{ secrets.CLASPRC_JSON }}'  # 登録したシークレットを指定しglaspに認証情報を渡す
+          auth: '${{ secrets.GLASP_AUTH }}'  # 登録したシークレットを指定しglaspに認証情報を渡す
 {% endraw %}
 
       - name: Push to Apps Script
@@ -126,7 +126,7 @@ jobs:
         with:
           version: 'v0.5.0'
 {% raw %}
-          auth: '${{ secrets.CLASPRC_JSON }}'  # 登録したシークレットを指定
+          auth: '${{ secrets.GLASP_AUTH }}'  # 登録したシークレットを指定
 {% endraw %}
 
       - name: ファイルを push
@@ -145,7 +145,7 @@ glasp は`.clasp.json`の設定に従って`.ts` ファイルを自動検出し�
   with:
     version: 'v0.5.0'
 {% raw %}
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
     working-directory: 'apps-script/dir' # .clasp.json があるディレクトリ / 省略した場合はワークスペースルートが使用されます
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # OAuth2 クライアントIDを指定する場合
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # OAuth2 クライアントシークレットを指定する場合
@@ -167,6 +167,31 @@ glasp は`.clasp.json`の設定に従って`.ts` ファイルを自動検出し�
 
 `client-id` と `client-secret` を設定すると、`GLASP_CLIENT_ID` と `GLASP_CLIENT_SECRET` もエクスポートされ、glasp の OAuth フローでビルド時埋め込みのデフォルト認証情報の代わりにカスタムクレデンシャルを使用できます。
 
+## セキュリティ上の注意
+
+`GLASP_AUTH` には有効期限の長い OAuth リフレッシュトークンが含まれます。入手した人は、その Google アカウントが編集できるすべての Apps Script プロジェクトを読み書きできるため、デプロイ鍵と同じように扱ってください。
+
+- **ログの伏せ字**: GitHub は、JSON のような[構造化データを 1 つの secret として保存すると、ログの伏せ字が確実には効かない](https://docs.github.com/ja/actions/reference/security/secrets)としています。そのため Action は、JSON 内のトークンとクライアントシークレットの値を個別に `::add-mask::` で登録します。`GLASP_AUTH` を自分で出力しないでください。
+- **後続のステップから見える**: `auth` 入力は `GITHUB_ENV` 経由で `GLASP_AUTH` をエクスポートするため、同じジョブの後続のステップ（サードパーティの Action を含む）はすべて値を読めます。信頼できるステップだけで構成されたジョブで使ってください。そうでない場合は `auth` を指定せず、glasp を実行するステップにだけ secret を渡します（この方法では上記の値ごとの伏せ字登録は行われません。glasp 自体は認証情報を出力しません）。
+
+  ```yaml
+  - uses: takihito/glasp@v0.5.0
+    with:
+      version: 'v0.5.0'
+  - name: Apps Script に push
+    run: glasp push
+    env:
+{% raw %}
+      GLASP_AUTH: ${{ secrets.GLASP_AUTH }}
+{% endraw %}
+  ```
+
+- **起動トリガー**: フォークからの `pull_request_target` や `workflow_run` など、信頼できないコードが動くワークフローに secret を渡さないでください。保護されたブランチへの `push` や `workflow_dispatch` を使います。
+- **最小権限**: `permissions: contents: read` を設定し、checkout は `persist-credentials: false` で行います。サードパーティの Action はコミット SHA で固定します。
+- **Environment による保護**: secret はリポジトリ全体ではなく、デプロイ用ブランチに限定した [GitHub Environment](https://docs.github.com/ja/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)（必要なら承認者付き）に保存し、ジョブで `environment:` を指定して参照します。
+- **専用アカウント**: CI には、対象のプロジェクトだけを編集できる専用の Google アカウントでログインします。
+- **無効化**: secret が漏れた可能性がある場合は、Google アカウントの「セキュリティ」→「サードパーティ製のアプリとサービス」から glasp のアクセス権を削除してリフレッシュトークンを無効にし、再ログインして secret を更新します。`glasp logout` はローカルのファイルを削除するだけで、トークンは無効になりません。
+
 ## モノレポ / サブディレクトリのプロジェクト
 
 `.clasp.json` がサブディレクトリにある場合（モノレポ構成など）、`working-directory` input を使います：
@@ -176,7 +201,7 @@ glasp は`.clasp.json`の設定に従って`.ts` ファイルを自動検出し�
   with:
     version: 'v0.5.0'
 {% raw %}
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
 {% endraw %}
     working-directory: 'apps-script/dir'   # .clasp.json があるディレクトリ
 ```
