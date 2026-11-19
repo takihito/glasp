@@ -161,8 +161,11 @@ glasp 固有のディレクトリ（自動作成、push 対象から除外）：
 | `config.json` | glasp 固有の設定（アーカイブ設定等） |
 | `history.jsonl` | コマンド実行履歴（JSON Lines 形式） |
 | `archive/` | push/pull のアーカイブ |
+| `.gitignore` | `config.json` 以外を Git の管理対象から外す（自動作成） |
 
 `.glasp/` ディレクトリはパーミッション `0700` で作成されます。初回作成時に glasp が自動的に `.claspignore` に `.glasp/` を追加するため、clasp が glasp の内部ファイルを push することを防ぎます。
+
+また glasp は `.glasp/.gitignore` を（存在しない場合に）作成し、OAuth トークンキャッシュ（`access.json`）、履歴、アーカイブが Git にコミットされないようにします。`config.json` は共有できるよう対象外にしています。旧バージョンで作成された `.glasp/` にも、そのプロジェクトで次に glasp コマンドを実行した時点で作成されます。既存の `.glasp/.gitignore` は上書きしません。すでに `access.json` をコミットしてしまった場合は、トークンが漏洩したものとして扱ってください。Google アカウントの「セキュリティ」→「サードパーティ製のアプリとサービス」から glasp のアクセス権を削除してリフレッシュトークンを無効にし、`git rm --cached .glasp/access.json` で管理対象から外してから再ログインします。`glasp logout` はローカルのファイルを削除するだけでトークンは無効にならないこと、ファイルは Git の履歴に残ることに注意してください。
 
 ## Push
 
