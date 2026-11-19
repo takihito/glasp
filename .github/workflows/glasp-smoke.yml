@@ -16,6 +16,9 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # GLASP_AUTH lives in the "smoke" environment, which only the main branch
+    # can use, so a workflow_dispatch run from another branch cannot read it.
+    environment: smoke
     env:
       SCRIPT_ID: ${{ secrets.GLASP_SMOKE_SCRIPT_ID }}
     steps:
