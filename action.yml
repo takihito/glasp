@@ -79,6 +79,11 @@ runs:
         # Register each credential value inside the JSON as its own mask.
         # The secret is multi-line JSON, which GitHub's log redaction does
         # not reliably match as a whole; single-line token values are.
+        #
+        # Each line below is a workflow command consumed by the runner, not log
+        # output: "::add-mask::<value>" registers <value> as a secret so later log
+        # lines show "***". Do not enable `set -x` here; tracing would print the
+        # expanded values before they are masked.
         printf '%s' "$_INPUT_AUTH" \
           | { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
           | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/' \
