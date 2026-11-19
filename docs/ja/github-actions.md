@@ -172,7 +172,7 @@ glasp は`.clasp.json`の設定に従って`.ts` ファイルを自動検出し�
 `GLASP_AUTH` には有効期限の長い OAuth リフレッシュトークンが含まれます。入手した人は、その Google アカウントが編集できるすべての Apps Script プロジェクトを読み書きできるため、デプロイ鍵と同じように扱ってください。
 
 - **ログの伏せ字**: GitHub は、JSON のような[構造化データを 1 つの secret として保存すると、ログの伏せ字が確実には効かない](https://docs.github.com/ja/actions/reference/security/secrets)としています。そのため Action は、JSON 内のトークンとクライアントシークレットの値を個別に `::add-mask::` で登録します。`GLASP_AUTH` を自分で出力しないでください。
-- **後続のステップから見える**: `auth` 入力は `GITHUB_ENV` 経由で `GLASP_AUTH` をエクスポートするため、同じジョブの後続のステップ（サードパーティの Action を含む）はすべて値を読めます。信頼できるステップだけで構成されたジョブで使ってください。そうでない場合は `auth` を指定せず、glasp を実行するステップにだけ secret を渡します（この方法では上記の値ごとの伏せ字登録は行われません。glasp 自体は認証情報を出力しません）。
+- **後続のステップから見える**: `auth` 入力は `GITHUB_ENV` 経由で `GLASP_AUTH` をエクスポートするため、同じジョブの後続のステップ（サードパーティの Action を含む）はすべて値を読めます。どの方法で渡す場合も、secret を使うジョブのステップはすべて信頼できるものである必要があります。意図しない露出を減らすには、`auth` を指定せず、glasp を実行するステップにだけ secret を渡します（この方法では上記の値ごとの伏せ字登録は行われません。glasp 自体は認証情報を出力しません）。ただし、これで信頼できないステップが安全になるわけではありません。たとえばそのようなステップは、`runner.temp` にインストールされた glasp のバイナリを差し替え、glasp の実行時に認証情報を盗めます。信頼できないコードは、新しい GitHub ホストランナーで動く別のジョブで実行してください。glasp のステップにだけ secret を渡す例は次のとおりです。
 
   ```yaml
   - uses: takihito/glasp@v0.5.0
@@ -190,7 +190,7 @@ glasp は`.clasp.json`の設定に従って`.ts` ファイルを自動検出し�
 - **最小権限**: `permissions: contents: read` を設定し、checkout は `persist-credentials: false` で行います。サードパーティの Action はコミット SHA で固定します。
 - **Environment による保護**: secret はリポジトリ全体ではなく、デプロイ用ブランチに限定した [GitHub Environment](https://docs.github.com/ja/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)（必要なら承認者付き）に保存し、ジョブで `environment:` を指定して参照します。
 - **専用アカウント**: CI には、対象のプロジェクトだけを編集できる専用の Google アカウントでログインします。
-- **無効化**: secret が漏れた可能性がある場合は、Google アカウントの「セキュリティ」→「サードパーティ製のアプリとサービス」から glasp のアクセス権を削除してリフレッシュトークンを無効にし、再ログインして secret を更新します。`glasp logout` はローカルのファイルを削除するだけで、トークンは無効になりません。
+- **無効化**: secret が漏れた可能性がある場合は、Google アカウントの「セキュリティ」→「サードパーティ製のアプリとサービス」から、そのトークンを発行した OAuth アプリのアクセス権を削除してリフレッシュトークンを無効にします。対象は、ログインに使った OAuth クライアントです（`glasp login` なら glasp の組み込みクライアント、`clasp login` なら clasp のクライアント、独自の認証情報でログインした場合はそのクライアント）。その後、再ログインして secret を更新します。`glasp logout` はローカルのファイルを削除するだけで、トークンは無効になりません。
 
 ## モノレポ / サブディレクトリのプロジェクト
 

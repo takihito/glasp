@@ -84,9 +84,32 @@ runs:
         # output: "::add-mask::<value>" registers <value> as a secret so later log
         # lines show "***". Do not enable `set -x` here; tracing would print the
         # expanded values before they are masked.
+        #
+        # jq (preinstalled on GitHub-hosted runners) parses the JSON, so values
+        # are masked in their decoded form (e.g. "1\/\/x" -> "1//x") wherever
+        # they appear in the document. Without jq, or when the input is not
+        # valid JSON, fall back to a line-based pattern match.
+        if command -v jq >/dev/null 2>&1 \
+          && printf '%s' "$_INPUT_AUTH" | jq -e 'type == "object"' >/dev/null 2>&1; then
+          _use_jq=1
+        else
+          _use_jq=0
+          echo "::warning::jq is unavailable or the auth input is not a JSON object; using pattern-based log masking for GLASP_AUTH."
+        fi
+        _extract_credentials() {
+          if [ "$_use_jq" = 1 ]; then
+            jq -r '.. | objects | to_entries[]
+              | select(.key == "access_token" or .key == "refresh_token"
+                  or .key == "id_token" or .key == "clientSecret"
+                  or .key == "client_secret")
+              | .value | strings'
+          else
+            { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
+              | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/'
+          fi
+        }
         printf '%s' "$_INPUT_AUTH" \
-          | { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
-          | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/' \
+          | _extract_credentials \
           | while IFS= read -r _value; do
               if [ -n "$_value" ]; then
                 printf '::add-mask::%s\n' "$_value"

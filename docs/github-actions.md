@@ -171,7 +171,7 @@ When `client-id` and `client-secret` are set, the action also exports `GLASP_CLI
 `GLASP_AUTH` contains a long-lived OAuth refresh token. Anyone who obtains it can read and modify every Apps Script project the Google account can edit, so treat it like a deploy key.
 
 - **Log masking**: GitHub [does not reliably redact structured data such as JSON](https://docs.github.com/en/actions/reference/security/secrets) when it is stored as a single secret. The action therefore registers each token and client secret value inside the JSON with `::add-mask::`. Never print `GLASP_AUTH` yourself.
-- **Visible to later steps**: The `auth` input exports `GLASP_AUTH` through `GITHUB_ENV`, so every later step in the same job, including third-party actions, can read it. Use `auth` only in jobs whose steps you trust. Otherwise omit `auth` and pass the secret only to the steps that run glasp (the per-value masks above are not registered in this pattern; glasp itself never prints credentials):
+- **Visible to later steps**: The `auth` input exports `GLASP_AUTH` through `GITHUB_ENV`, so every later step in the same job, including third-party actions, can read it. Every step in a job that uses the secret must be trusted, however you pass it. To reduce accidental exposure, you can omit `auth` and pass the secret only to the steps that run glasp (the per-value masks above are not registered in this pattern; glasp itself never prints credentials). This does not make untrusted steps safe: such a step could, for example, replace the glasp binary installed under `runner.temp` and capture the credentials when glasp runs. Run untrusted code in a separate job on a fresh GitHub-hosted runner. Passing the secret only to the glasp step looks like this:
 
   ```yaml
   - uses: takihito/glasp@v0.5.0
@@ -189,7 +189,7 @@ When `client-id` and `client-secret` are set, the action also exports `GLASP_CLI
 - **Least privilege**: Set `permissions: contents: read` and check out with `persist-credentials: false`. Pin third-party actions to a commit SHA.
 - **Environment protection**: Store the secret in a [GitHub Environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) limited to your deployment branch (optionally with required reviewers) instead of as a repository-wide secret, and reference it with `environment:` in the job.
 - **Dedicated account**: Log in with a Google account dedicated to CI that can edit only the target projects.
-- **Revocation**: If the secret may have leaked, remove glasp's access in your Google Account (Security → Third-party apps & services) to revoke the refresh token, then log in again and update the secret. `glasp logout` only deletes the local file and does not revoke the token.
+- **Revocation**: If the secret may have leaked, revoke the refresh token by removing access for the OAuth app that issued it in your Google Account (Security → Third-party apps & services). That is the OAuth client used at login: glasp's built-in client for `glasp login`, clasp's client for `clasp login`, or your own client if you logged in with custom credentials. Then log in again and update the secret. `glasp logout` only deletes the local file and does not revoke the token.
 
 ## Monorepo / subdirectory projects
 
