@@ -322,7 +322,7 @@ steps:
   - uses: takihito/glasp@v0.5.0
     with:
       version: 'v0.5.0'
-      auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
+      auth: '${{ secrets.GLASP_AUTH }}'  # pass the registered secret
   - run: glasp push
 ```
 
@@ -336,7 +336,7 @@ If `.clasp.json` is in a subdirectory, use the `working-directory` input (sets `
 - uses: takihito/glasp@v0.5.0
   with:
     version: 'v0.5.0'
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json (optional)
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret

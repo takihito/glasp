@@ -57,11 +57,11 @@ export GLASP_AUTH=$(cat ~/.clasprc.json) && glasp push    # from clasp login
 
 ### 2. Add a repository secret
 
-Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `CLASPRC_JSON`:
+Copy the entire JSON content of `.glasp/access.json` or `~/.clasprc.json` and add it as a repository secret named `GLASP_AUTH`:
 
 **GitHub → Repository → Settings → Secrets and variables → Actions → New repository secret**
 
-- Name: `CLASPRC_JSON`
+- Name: `GLASP_AUTH`
 - Value: *(paste the JSON content)*
 
 ### 3. Add the action to your workflow
@@ -73,7 +73,7 @@ steps:
     with:
       version: 'v0.5.0'
 {% raw %}
-      auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
+      auth: '${{ secrets.GLASP_AUTH }}'  # pass the registered secret to glasp
 {% endraw %}
   - run: glasp push
 ```
@@ -99,7 +99,7 @@ jobs:
         with:
           version: 'v0.5.0'
 {% raw %}
-          auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret to glasp
+          auth: '${{ secrets.GLASP_AUTH }}'  # pass the registered secret to glasp
 {% endraw %}
 
       - name: Push to Apps Script
@@ -125,7 +125,7 @@ jobs:
         with:
           version: 'v0.5.0'
 {% raw %}
-          auth: '${{ secrets.CLASPRC_JSON }}'  # pass the registered secret
+          auth: '${{ secrets.GLASP_AUTH }}'  # pass the registered secret
 {% endraw %}
 
       - name: Push files
@@ -144,7 +144,7 @@ glasp automatically detects `.ts` files according to your `.clasp.json` settings
   with:
     version: 'v0.5.0'
 {% raw %}
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
     working-directory: 'apps-script/dir' # directory containing .clasp.json / workspace root is used if omitted
     client-id: ${{ secrets.GLASP_CLIENT_ID }}         # Optional: specify OAuth2 client ID
     client-secret: ${{ secrets.GLASP_CLIENT_SECRET }} # Optional: specify OAuth2 client secret
@@ -166,6 +166,31 @@ To populate `GLASP_AUTH`, copy the JSON content of `.glasp/access.json` (from `g
 
 When `client-id` and `client-secret` are set, the action also exports `GLASP_CLIENT_ID` and `GLASP_CLIENT_SECRET`, allowing glasp's OAuth flow to use custom credentials instead of the built-in defaults.
 
+## Security considerations
+
+`GLASP_AUTH` contains a long-lived OAuth refresh token. Anyone who obtains it can read and modify every Apps Script project the Google account can edit, so treat it like a deploy key.
+
+- **Log masking**: GitHub [does not reliably redact structured data such as JSON](https://docs.github.com/en/actions/reference/security/secrets) when it is stored as a single secret. The action therefore registers each token and client secret value inside the JSON with `::add-mask::`. Never print `GLASP_AUTH` yourself.
+- **Visible to later steps**: The `auth` input exports `GLASP_AUTH` through `GITHUB_ENV`, so every later step in the same job, including third-party actions, can read it. Every step in a job that uses the secret must be trusted, however you pass it. To reduce accidental exposure, you can omit `auth` and pass the secret only to the steps that run glasp (the per-value masks above are not registered in this pattern; glasp itself never prints credentials). This does not make untrusted steps safe: such a step could, for example, replace the glasp binary installed under `runner.temp` and capture the credentials when glasp runs. Run untrusted code in a separate job on a fresh GitHub-hosted runner. Passing the secret only to the glasp step looks like this:
+
+  ```yaml
+  - uses: takihito/glasp@v0.5.0
+    with:
+      version: 'v0.5.0'
+  - name: Push to Apps Script
+    run: glasp push
+    env:
+{% raw %}
+      GLASP_AUTH: ${{ secrets.GLASP_AUTH }}
+{% endraw %}
+  ```
+
+- **Triggers**: Do not expose the secret to workflows that run untrusted code, such as `pull_request_target` or `workflow_run` triggered from forks. Prefer `push` to protected branches and `workflow_dispatch`.
+- **Least privilege**: Set `permissions: contents: read` and check out with `persist-credentials: false`. Pin third-party actions to a commit SHA.
+- **Environment protection**: Store the secret in a [GitHub Environment](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments) limited to your deployment branch (optionally with required reviewers) instead of as a repository-wide secret, and reference it with `environment:` in the job.
+- **Dedicated account**: Log in with a Google account dedicated to CI that can edit only the target projects.
+- **Revocation**: If the secret may have leaked, revoke the refresh token by removing access for the OAuth app that issued it in your Google Account (Security → Third-party apps & services). That is the OAuth client used at login: glasp's built-in client for `glasp login`, clasp's client for `clasp login`, or your own client if you logged in with custom credentials. Then log in again and update the secret. `glasp logout` only deletes the local file and does not revoke the token.
+
 ## Monorepo / subdirectory projects
 
 If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `working-directory` input:
@@ -175,7 +200,7 @@ If your `.clasp.json` lives in a subdirectory (e.g. a monorepo), use the `workin
   with:
     version: 'v0.5.0'
 {% raw %}
-    auth: '${{ secrets.CLASPRC_JSON }}'
+    auth: '${{ secrets.GLASP_AUTH }}'
 {% endraw %}
     working-directory: 'apps-script/dir'   # contains .clasp.json
 ```
