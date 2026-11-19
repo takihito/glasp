@@ -85,10 +85,13 @@ runs:
         # lines show "***". Do not enable `set -x` here; tracing would print the
         # expanded values before they are masked.
         #
-        # jq (preinstalled on GitHub-hosted runners) parses the JSON, so values
-        # are masked in their decoded form (e.g. "1\/\/x" -> "1//x") wherever
-        # they appear in the document. Without jq, or when the input is not
-        # valid JSON, fall back to a line-based pattern match.
+        # Both forms of each value are masked. jq (preinstalled on GitHub-hosted
+        # runners) yields the decoded value (e.g. "1\/\/x" -> "1//x") wherever
+        # it appears in the document, which is what glasp or a re-serialiser
+        # would print. The line-based pattern match always runs as well and
+        # yields the value as written in the secret (e.g. "1\/\/x"), which is
+        # what printing GLASP_AUTH verbatim would show. Without jq, or when the
+        # input is not valid JSON, only the pattern match is used.
         if command -v jq >/dev/null 2>&1 \
           && printf '%s' "$_INPUT_AUTH" | jq -e 'type == "object"' >/dev/null 2>&1; then
           _use_jq=1
@@ -98,18 +101,18 @@ runs:
         fi
         _extract_credentials() {
           if [ "$_use_jq" = 1 ]; then
-            jq -r '.. | objects | to_entries[]
+            printf '%s' "$_INPUT_AUTH" | jq -r '.. | objects | to_entries[]
               | select(.key == "access_token" or .key == "refresh_token"
                   or .key == "id_token" or .key == "clientSecret"
                   or .key == "client_secret")
               | .value | strings'
-          else
-            { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
-              | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/'
           fi
+          printf '%s' "$_INPUT_AUTH" \
+            | { grep -oE '"(access_token|refresh_token|id_token|clientSecret|client_secret)"[[:space:]]*:[[:space:]]*"[^"]+"' || true; } \
+            | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"([^"]+)"$/\1/'
         }
-        printf '%s' "$_INPUT_AUTH" \
-          | _extract_credentials \
+        _extract_credentials \
+          | sort -u \
           | while IFS= read -r _value; do
               if [ -n "$_value" ]; then
                 printf '::add-mask::%s\n' "$_value"
