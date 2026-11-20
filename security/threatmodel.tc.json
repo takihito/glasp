@@ -1,0 +1,1172 @@
+{
+  "schema": 1,
+  "applicationInfo": {
+    "name": "glasp",
+    "description": "glasp は Node.js 製 `clasp` を置き換える Go 製のシングルバイナリ CLI で、Google Apps Script (GAS) プロジェクトの clone / pull / push / deploy / run を行う。\n\n### スコープ\n本脅威モデルの対象は以下の 4 領域:\n- OAuth 2.0 ログインフロー（ローカルコールバックサーバー、state、PKCE）\n- トークンの保存（`.glasp/access.json`、`.clasprc.json`、`GLASP_AUTH` 環境変数）\n- Apps Script API との通信（`internal/scriptapi`、pull 時のファイル書き出し）\n- 履歴ファイルとアーカイブ（`.glasp/history.jsonl`、`.glasp/archive/`、`push --history-id`）\n- CI での認証情報の受け渡し（GitHub Action `action.yml` と glasp リポジトリの smoke ワークフローにおける `GLASP_AUTH`）\n\n### 対象外\n- Google 側（OAuth / Apps Script / Drive）の内部実装\n- glasp のビルド・配布パイプライン（サプライチェーン）\n- 実行される GAS コード自体の安全性\n"
+  },
+  "architecture": {
+    "description": "### コンポーネント\n- **glasp CLI**（開発者端末または CI 上で動作）\n  - `internal/auth`: OAuth 設定解決、ログインフロー、トークン保存／リフレッシュ\n  - `internal/scriptapi`: Apps Script API v1 の薄いラッパー（`google.golang.org/api/script/v1`）\n  - `internal/syncer`: ローカルファイル収集、リモートコンテンツのローカル反映\n  - `internal/history` / `internal/archive`: 実行履歴とペイロードのアーカイブ\n- **ローカル OAuth コールバックサーバー**: `localhost:0`（ランダムポート）で `/oauth2callback` を待ち受け、1 回の結果受信後に停止\n- **既定ブラウザ**: `open` / `xdg-open` / `rundll32` で認可 URL を開く\n- **Google OAuth 2.0 / Apps Script API / Drive API**（外部、TLS）\n\n### 認証情報の入手経路（優先順）\n1. `--auth <path>`（`.clasprc.json` 互換ファイル。リフレッシュ後のトークンを書き戻す）\n2. `GLASP_AUTH` 環境変数（JSON 文字列。リフレッシュ結果は永続化しない。主に CI 向け）\n3. プロジェクトキャッシュ `.glasp/access.json`（無ければ対話ログイン）\n\nOAuth クライアント ID / シークレットはビルド時に ldflags で埋め込まれ、`GLASP_CLIENT_ID` / `GLASP_CLIENT_SECRET` で上書き可能。スコープは `script.projects`、`script.deployments`、`drive.file`。\n\n### 信頼境界\n- TB1: 開発者端末（OS ユーザー） ↔ 同一端末上の他ユーザー／他プロセス\n- TB2: glasp プロセス ↔ ローカルコールバックサーバーへの HTTP 接続元（ブラウザ／任意のローカルプロセス）\n- TB3: 開発者端末／CI ↔ Google API（インターネット）\n- TB4: プロジェクトディレクトリ ↔ Git リポジトリ／GAS へのアップロード対象\n- TB5: GitHub Actions ジョブ内の glasp ステップ ↔ 同一ジョブの他ステップ／サードパーティ Action\n\n### CI（GitHub Actions）\n- `takihito/glasp` Action（`action.yml`）が `auth` input を `GITHUB_ENV` 経由で `GLASP_AUTH` としてエクスポートし、ジョブ内の後続ステップすべてで参照可能になる\n- glasp リポジトリ（public）の smoke ワークフローは main への push と workflow_dispatch でのみ起動し、`GLASP_AUTH` はリポジトリ単位の secret として保存されている\n"
+  },
+  "dataflow": {
+    "description": "### 対話ログイン\n1. glasp が `localhost:<random>` でリスナーを起動し、32 バイト乱数の state（任意で PKCE S256 challenge）付き認可 URL を生成\n2. 既定ブラウザで Google の同意画面を開く\n3. Google → ブラウザ → `http://localhost:<port>/oauth2callback?code=...&state=...`\n4. state を 1 回限りで検証し、認可コードを受信\n5. glasp → Google token endpoint: code（+ code_verifier）+ client secret でトークン交換\n6. アクセストークン／リフレッシュトークンを `.glasp/access.json`（0600、アトミック書き込み、ディレクトリは 0700）に保存\n\n### API 呼び出し\n- `oauth2.NewClient` が Bearer トークンを付与し、期限切れ時は自動リフレッシュ（`--auth` の場合はファイルへ書き戻し）\n- push: ローカルファイル収集 → (TS→GAS 変換) → `projects.updateContent`\n- pull/clone: `projects.getContent` → パス検証 → ローカルへ書き出し（0644）\n- run: `scripts.run` でリモート関数を実行（`--params` を送信）\n\n### 履歴とアーカイブ\n- 各コマンドの引数（機密キーワードを含むオプションは `REDACTED` に置換）、結果、アーカイブパスを `.glasp/history.jsonl` に追記（ファイルロック付き、0644）\n- push/pull のスナップショットを `.glasp/archive/<scriptId>/<push|pull>/<timestamp>/` に保存\n- `push --history-id <id>` は履歴の `archive.path` からペイロードを読み込み、command / direction / scriptId を検証して再送信\n"
+  },
+  "assumptions": [
+    {
+      "id": "d7d8954a-0474-544d-9a4a-21e6420f9bcf",
+      "numericId": 1,
+      "displayOrder": 1,
+      "content": "The developer's OS user account and workstation are not compromised by malware running with the same user privileges; if they are, file-permission-based protection of tokens does not apply.",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "同一ユーザー権限のマルウェアは 0600 のファイルも読めるため、端末自体の侵害は本モデルの防御範囲外とする。"
+        }
+      ]
+    },
+    {
+      "id": "a0ed0791-ba96-508e-86dc-0391344cc23e",
+      "numericId": 2,
+      "displayOrder": 2,
+      "content": "The OAuth client secret embedded in the glasp binary is not treated as confidential, following Google's guidance for installed (desktop) applications.",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "バイナリから抽出可能なため、シークレットの秘匿性には依存しない設計とする。"
+        }
+      ]
+    },
+    {
+      "id": "c9acc408-f63e-52ca-9b93-3647ba35378f",
+      "numericId": 3,
+      "displayOrder": 3,
+      "content": "CI platforms that receive GLASP_AUTH store it as an encrypted secret and mask registered secret values in logs.",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "GitHub Actions の secrets を想定。ただし JSON のような構造化データはマスクが確実に効かない場合がある（M24 参照）。"
+        }
+      ]
+    },
+    {
+      "id": "eb0d2676-a83b-5eea-b3e4-c427269a97a7",
+      "numericId": 4,
+      "displayOrder": 4,
+      "content": "All communication with Google OAuth and Apps Script endpoints uses HTTPS via the Go standard library and the system trust store, which is not tampered with."
+    },
+    {
+      "id": "319b7087-a620-5461-b36a-b109f9c52d97",
+      "numericId": 5,
+      "displayOrder": 5,
+      "content": "Project directories containing .glasp/ are not placed in shared or cloud-synced folders accessible to other people.",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "Dropbox / Google Drive 同期フォルダ等に置くとトークンが共有される点に注意。"
+        }
+      ]
+    },
+    {
+      "id": "4c57ee24-5d31-59b0-81d6-a4776a9344b7",
+      "numericId": 6,
+      "displayOrder": 6,
+      "content": "Only trusted maintainers have write access to the takihito/glasp repository, so only they can run workflow_dispatch or change workflows that read GLASP_AUTH.",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "リポジトリは public。書き込み権限者 = secret を扱うワークフローを起動・改変できる人。"
+        }
+      ]
+    }
+  ],
+  "mitigations": [
+    {
+      "id": "03c53042-e8bb-5e0f-8292-564a069782ac",
+      "numericId": 1,
+      "displayOrder": 1,
+      "content": "Write the token cache .glasp/access.json with mode 0600 using atomic replace, inside a .glasp/ directory created with mode 0700.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/token_store.go writePrivateFileAtomically, internal/config/glasp_config.go EnsureGlaspDir"
+        }
+      ]
+    },
+    {
+      "id": "69f88884-0c64-5798-8ce3-56ba8a52c22d",
+      "numericId": 2,
+      "displayOrder": 2,
+      "content": "Warn when an auth or token cache file is readable by group or others on non-Windows platforms.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/token_store.go warnIfWorldOrGroupReadable"
+        }
+      ]
+    },
+    {
+      "id": "13dc980b-2fe0-5bf1-9788-b2a5cad5eea8",
+      "numericId": 3,
+      "displayOrder": 3,
+      "content": "Automatically add .glasp/ to .claspignore and always exclude .glasp/ from collected files so tokens and history are never uploaded to Apps Script.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "EnsureGlaspDir / syncer のデフォルト除外"
+        }
+      ]
+    },
+    {
+      "id": "88eefbba-1202-51c8-896a-1930ffa1d4e5",
+      "numericId": 4,
+      "displayOrder": 4,
+      "content": "Create .glasp/.gitignore (ignore everything except .gitignore and config.json) atomically without overwriting an existing file, and document how to revoke a token that was already committed.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "PR #223 で対応。ルートの .gitignore は変更しない。既に Git 管理下のファイルには効かないため、README に無効化手順を記載。"
+        }
+      ]
+    },
+    {
+      "id": "0659b79d-1add-5582-89c1-c4a049aef7d4",
+      "numericId": 5,
+      "displayOrder": 5,
+      "content": "Generate a 32-byte cryptographically random OAuth state and validate it exactly once in the callback handler.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/login_flow.go generateStateToken / oauthState.validate"
+        }
+      ]
+    },
+    {
+      "id": "e0b42e66-6cec-5cf6-b57c-8bfa0029e079",
+      "numericId": 6,
+      "displayOrder": 6,
+      "content": "Support PKCE (S256) for the authorization code exchange via --pkce or GLASP_USE_PKCE, without logging or persisting the code_verifier.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "実装済みだがオプトイン。"
+        }
+      ]
+    },
+    {
+      "id": "0e437971-4e8d-5146-b165-2027c2084e22",
+      "numericId": 7,
+      "displayOrder": 7,
+      "content": "Enable PKCE by default for interactive login and keep an opt-out only for compatibility.",
+      "status": "mitigationIdentified",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "Google はデスクトップアプリで PKCE を推奨。既定化を提案。"
+        }
+      ]
+    },
+    {
+      "id": "f35fd987-b1a2-5195-82ba-d0239eedbd6c",
+      "numericId": 8,
+      "displayOrder": 8,
+      "content": "Bind the OAuth callback server to localhost on a random ephemeral port, use a private ServeMux, accept a single result, and shut the server down after login.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/login_flow.go startCallbackServer"
+        }
+      ]
+    },
+    {
+      "id": "807d467e-4eb3-50b0-a61f-37ba7b162576",
+      "numericId": 9,
+      "displayOrder": 9,
+      "content": "Request only the minimal OAuth scopes needed: script.projects, script.deployments and drive.file (not full Drive access).",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/auth.go buildOAuthConfig"
+        }
+      ]
+    },
+    {
+      "id": "079663f1-6cb5-5944-b23a-e018db37d978",
+      "numericId": 10,
+      "displayOrder": 10,
+      "content": "Use the official Google API Go client and golang.org/x/oauth2, which enforce HTTPS with certificate verification for all Google endpoints.",
+      "status": "mitigationResolved"
+    },
+    {
+      "id": "81ce3444-48c9-5845-b5c9-169a2995deee",
+      "numericId": 11,
+      "displayOrder": 11,
+      "content": "Validate remote file names on pull/clone and reject absolute paths and '..' elements so files cannot be written outside the content directory.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/syncer/syncer.go ApplyRemoteContent のパス検証"
+        }
+      ]
+    },
+    {
+      "id": "8fd2e14b-90b9-5703-9ede-e2ca58f41d80",
+      "numericId": 12,
+      "displayOrder": 12,
+      "content": "Redact values of sensitive options (auth, token, secret, password, key, params, -p) before writing command arguments to history.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "cmd/glasp/main.go sanitizeHistoryArgs（キーワードベースのため新オプション追加時は要更新）"
+        }
+      ]
+    },
+    {
+      "id": "e54a941c-f865-54fe-99a5-442bee27cbde",
+      "numericId": 13,
+      "displayOrder": 13,
+      "content": "Create .glasp/history.jsonl and archive files with owner-only permissions (0600 / 0700) for defense in depth.",
+      "status": "mitigationIdentified",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "現状 history.jsonl は 0644、archive ディレクトリは 0755（親の .glasp/ は 0700）。"
+        }
+      ]
+    },
+    {
+      "id": "d4c45492-ded5-535c-97f0-bcf9f61d5080",
+      "numericId": 14,
+      "displayOrder": 14,
+      "content": "When replaying with push --history-id, verify that the entry command is push, the archive direction is push, and the manifest scriptId matches the current project; support --dry-run.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "cmd/glasp/push.go runFromHistoryID"
+        }
+      ]
+    },
+    {
+      "id": "4b977b76-f315-51d9-9b93-70d0e1e18d59",
+      "numericId": 15,
+      "displayOrder": 15,
+      "content": "Record a hash of each archived payload in manifest.json and verify it before replaying with push --history-id.",
+      "status": "mitigationIdentified",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "改ざん検知の強化案。"
+        }
+      ]
+    },
+    {
+      "id": "6042e94a-e7b0-598d-9de3-73c5b51e114f",
+      "numericId": 16,
+      "displayOrder": 16,
+      "content": "Never log tokens, authorization codes or code_verifier; log only lengths or masked values.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "CLAUDE.md / AGENTS.md のロギング規約、login_flow.go は code の長さのみ記録"
+        }
+      ]
+    },
+    {
+      "id": "1a7643f9-0aa4-5c27-9aa2-4aa33ca94772",
+      "numericId": 17,
+      "displayOrder": 17,
+      "content": "Do not persist tokens refreshed from GLASP_AUTH to disk in CI environments.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "internal/auth/auth.go clientFromAuthJSON（persistPath 空）"
+        }
+      ]
+    },
+    {
+      "id": "bcc65890-b1ea-573c-96d9-65637e22fca6",
+      "numericId": 18,
+      "displayOrder": 18,
+      "content": "Complete Google OAuth app verification for the glasp OAuth client so users see a verified publisher on the consent screen.",
+      "status": "mitigationIdentified",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "現在の検証状況は未確認。"
+        }
+      ]
+    },
+    {
+      "id": "7a68bdba-856e-5f9e-b48b-22c3f23db2fd",
+      "numericId": 19,
+      "displayOrder": 19,
+      "content": "Add an overall timeout to the interactive login wait so the callback server does not stay open indefinitely.",
+      "status": "mitigationIdentified",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "現状は ctx キャンセル（Ctrl-C）でのみ終了。"
+        }
+      ]
+    },
+    {
+      "id": "13b44399-011e-5388-b269-96ccc4ff0fe6",
+      "numericId": 20,
+      "displayOrder": 20,
+      "content": "Run workflows that read GLASP_AUTH only on push to main and workflow_dispatch, never on pull_request_target or other events reachable from fork pull requests.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": ".github/workflows/glasp-smoke*.yml, release.yml。リポジトリは public のため最重要。workflow_dispatch は書き込み権限があれば任意のブランチの定義を実行できるため、それだけでは不十分だった。2026-11-20 に M26 の Environment（main 限定）で塞いだ。"
+        }
+      ]
+    },
+    {
+      "id": "f2a12121-e776-5834-9d21-50c446285102",
+      "numericId": 21,
+      "displayOrder": 21,
+      "content": "Limit workflow GITHUB_TOKEN permissions to contents: read, check out with persist-credentials: false, and pin third-party actions to commit SHAs.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": ".github/workflows/glasp-smoke*.yml"
+        }
+      ]
+    },
+    {
+      "id": "5464115d-98c8-5992-8396-ab8f11a9c3a5",
+      "numericId": 22,
+      "displayOrder": 22,
+      "content": "Restrict job egress with harden-runner egress-policy: block to GitHub, Google API and required package endpoints in the smoke workflow.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "glasp-smoke.yml のみ block。glasp-smoke-audit.yml / glasp-smoke-native-firewall.yml は audit（記録のみ）で workflow_dispatch 専用。"
+        }
+      ]
+    },
+    {
+      "id": "2bb8642a-198d-5303-9aba-b5e4a5e315f1",
+      "numericId": 23,
+      "displayOrder": 23,
+      "content": "Pass action inputs to shell steps through environment variables (not ${{ }} interpolation in run:) and write GITHUB_ENV with a random heredoc delimiter.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "action.yml の Export GLASP_AUTH / Export OAuth credentials ステップ"
+        }
+      ]
+    },
+    {
+      "id": "c4192430-efed-5b84-b859-6d34aa4db299",
+      "numericId": 24,
+      "displayOrder": 24,
+      "content": "In the action, register access_token, refresh_token, id_token, clientSecret and client_secret values from GLASP_AUTH individually with ::add-mask::, in both the decoded form (jq) and the form written in the secret (pattern match), so they are redacted even though the secret is multi-line JSON.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "PR #224・#226 で対応。GitHub は構造化データを secret 値にすることを非推奨としている（公式ドキュメントで確認済み）。実ランナーでの伏せ字は smoke test のログで要確認。"
+        }
+      ]
+    },
+    {
+      "id": "60aad3b0-c292-52c0-a5da-422cd9796e93",
+      "numericId": 25,
+      "displayOrder": 25,
+      "content": "Document that the auth input exports GLASP_AUTH to all later steps of the job, recommend using it only in jobs without untrusted actions, and support passing it only to glasp steps via step-level env.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "PR #224 で文書化。ステップ単位の env は露出を減らすだけで、信頼できないステップへの対策にはならない（バイナリ差し替えが可能）ことも明記。"
+        }
+      ]
+    },
+    {
+      "id": "4336d24b-332d-50e1-a690-26caab09c24c",
+      "numericId": 26,
+      "displayOrder": 26,
+      "content": "Store GLASP_AUTH in a GitHub Environment restricted to the main branch (optionally with required reviewers) and use a dedicated Google account that can only access smoke-test projects.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "2026-11-20: Environment smoke（main のみ、承認者なし）を作成し、PR #227 で smoke 系 3 ワークフローに適用。GLASP_AUTH を Environment に移し、リポジトリの secret を削除。main での smoke test で認証成功と伏せ字（トークン 0 件）を確認。GLASP_AUTH は CI 専用 Google アカウントのトークンで、本番のプロジェクトにはアクセスできないことをメンテナーが確認。"
+        }
+      ]
+    },
+    {
+      "id": "fdeb45db-4f92-5b78-b6a5-ce125115ba55",
+      "numericId": 27,
+      "displayOrder": 27,
+      "content": "Add CI security guidance to docs/github-actions.md (no pull_request_target, dedicated account, Environment protection, token rotation) and align the example secret name with GLASP_AUTH.",
+      "status": "mitigationResolved",
+      "metadata": [
+        {
+          "key": "Comments",
+          "value": "PR #224 で対応。英語・日本語の両方に「セキュリティ上の注意」節を追加し、secret 名を GLASP_AUTH に統一。無効化はトークンを発行した OAuth アプリ単位で行うよう記載。"
+        }
+      ]
+    }
+  ],
+  "assumptionLinks": [
+    {
+      "type": "Threat",
+      "assumptionId": "d7d8954a-0474-544d-9a4a-21e6420f9bcf",
+      "linkedId": "f0add573-45af-556b-96b0-58848ea7a3a1"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "319b7087-a620-5461-b36a-b109f9c52d97",
+      "linkedId": "f0add573-45af-556b-96b0-58848ea7a3a1"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "a0ed0791-ba96-508e-86dc-0391344cc23e",
+      "linkedId": "3a0561aa-04d4-5d46-9ed9-8a81f126de1a"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "a0ed0791-ba96-508e-86dc-0391344cc23e",
+      "linkedId": "da088780-3d6f-59d5-9e3a-5ee6d4810f91"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "c9acc408-f63e-52ca-9b93-3647ba35378f",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "4c57ee24-5d31-59b0-81d6-a4776a9344b7",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "eb0d2676-a83b-5eea-b3e4-c427269a97a7",
+      "linkedId": "64ccd55a-f403-5791-9ec6-4aa4092218aa"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "d7d8954a-0474-544d-9a4a-21e6420f9bcf",
+      "linkedId": "15bacb4e-72f0-5427-a144-e37926833074"
+    },
+    {
+      "type": "Threat",
+      "assumptionId": "4c57ee24-5d31-59b0-81d6-a4776a9344b7",
+      "linkedId": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b"
+    }
+  ],
+  "mitigationLinks": [
+    {
+      "mitigationId": "03c53042-e8bb-5e0f-8292-564a069782ac",
+      "linkedId": "f0add573-45af-556b-96b0-58848ea7a3a1"
+    },
+    {
+      "mitigationId": "69f88884-0c64-5798-8ce3-56ba8a52c22d",
+      "linkedId": "f0add573-45af-556b-96b0-58848ea7a3a1"
+    },
+    {
+      "mitigationId": "13dc980b-2fe0-5bf1-9788-b2a5cad5eea8",
+      "linkedId": "98071b29-0ab0-5311-a8ee-0b978697beb1"
+    },
+    {
+      "mitigationId": "88eefbba-1202-51c8-896a-1930ffa1d4e5",
+      "linkedId": "98071b29-0ab0-5311-a8ee-0b978697beb1"
+    },
+    {
+      "mitigationId": "0659b79d-1add-5582-89c1-c4a049aef7d4",
+      "linkedId": "58d14792-e36b-5f75-a321-4b8ed024ad9a"
+    },
+    {
+      "mitigationId": "f35fd987-b1a2-5195-82ba-d0239eedbd6c",
+      "linkedId": "58d14792-e36b-5f75-a321-4b8ed024ad9a"
+    },
+    {
+      "mitigationId": "e0b42e66-6cec-5cf6-b57c-8bfa0029e079",
+      "linkedId": "3a0561aa-04d4-5d46-9ed9-8a81f126de1a"
+    },
+    {
+      "mitigationId": "0e437971-4e8d-5146-b165-2027c2084e22",
+      "linkedId": "3a0561aa-04d4-5d46-9ed9-8a81f126de1a"
+    },
+    {
+      "mitigationId": "f35fd987-b1a2-5195-82ba-d0239eedbd6c",
+      "linkedId": "3a0561aa-04d4-5d46-9ed9-8a81f126de1a"
+    },
+    {
+      "mitigationId": "bcc65890-b1ea-573c-96d9-65637e22fca6",
+      "linkedId": "da088780-3d6f-59d5-9e3a-5ee6d4810f91"
+    },
+    {
+      "mitigationId": "807d467e-4eb3-50b0-a61f-37ba7b162576",
+      "linkedId": "da088780-3d6f-59d5-9e3a-5ee6d4810f91"
+    },
+    {
+      "mitigationId": "6042e94a-e7b0-598d-9de3-73c5b51e114f",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "1a7643f9-0aa4-5c27-9aa2-4aa33ca94772",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "13b44399-011e-5388-b269-96ccc4ff0fe6",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "f2a12121-e776-5834-9d21-50c446285102",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "5464115d-98c8-5992-8396-ab8f11a9c3a5",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "c4192430-efed-5b84-b859-6d34aa4db299",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "4336d24b-332d-50e1-a690-26caab09c24c",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "fdeb45db-4f92-5b78-b6a5-ce125115ba55",
+      "linkedId": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba"
+    },
+    {
+      "mitigationId": "807d467e-4eb3-50b0-a61f-37ba7b162576",
+      "linkedId": "bb8c63bb-9110-516f-b4fc-3c59d2eb12e1"
+    },
+    {
+      "mitigationId": "079663f1-6cb5-5944-b23a-e018db37d978",
+      "linkedId": "64ccd55a-f403-5791-9ec6-4aa4092218aa"
+    },
+    {
+      "mitigationId": "81ce3444-48c9-5845-b5c9-169a2995deee",
+      "linkedId": "12b4ed46-88ba-5615-ba76-2348a5e45321"
+    },
+    {
+      "mitigationId": "8fd2e14b-90b9-5703-9ede-e2ca58f41d80",
+      "linkedId": "3f427270-cee9-5b10-802a-c63c53d61861"
+    },
+    {
+      "mitigationId": "e54a941c-f865-54fe-99a5-442bee27cbde",
+      "linkedId": "3f427270-cee9-5b10-802a-c63c53d61861"
+    },
+    {
+      "mitigationId": "d4c45492-ded5-535c-97f0-bcf9f61d5080",
+      "linkedId": "15bacb4e-72f0-5427-a144-e37926833074"
+    },
+    {
+      "mitigationId": "4b977b76-f315-51d9-9b93-70d0e1e18d59",
+      "linkedId": "15bacb4e-72f0-5427-a144-e37926833074"
+    },
+    {
+      "mitigationId": "6042e94a-e7b0-598d-9de3-73c5b51e114f",
+      "linkedId": "db77eff8-db37-520d-a62c-1f8a3f6fcd06"
+    },
+    {
+      "mitigationId": "7a68bdba-856e-5f9e-b48b-22c3f23db2fd",
+      "linkedId": "8c48542c-39b4-581c-b328-f04c4413e5f9"
+    },
+    {
+      "mitigationId": "0659b79d-1add-5582-89c1-c4a049aef7d4",
+      "linkedId": "8c48542c-39b4-581c-b328-f04c4413e5f9"
+    },
+    {
+      "mitigationId": "f2a12121-e776-5834-9d21-50c446285102",
+      "linkedId": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b"
+    },
+    {
+      "mitigationId": "5464115d-98c8-5992-8396-ab8f11a9c3a5",
+      "linkedId": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b"
+    },
+    {
+      "mitigationId": "60aad3b0-c292-52c0-a5da-422cd9796e93",
+      "linkedId": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b"
+    },
+    {
+      "mitigationId": "4336d24b-332d-50e1-a690-26caab09c24c",
+      "linkedId": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b"
+    },
+    {
+      "mitigationId": "2bb8642a-198d-5303-9aba-b5e4a5e315f1",
+      "linkedId": "bb489b95-f11d-5459-b0af-7df787ff73ff"
+    }
+  ],
+  "threats": [
+    {
+      "id": "f0add573-45af-556b-96b0-58848ea7a3a1",
+      "numericId": 1,
+      "displayOrder": 1,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "High"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "0600 + 0700 で他ユーザーからの読み取りは防止済み。同一ユーザーのマルウェアは A1 で範囲外。"
+        }
+      ],
+      "tags": [
+        "Token storage"
+      ],
+      "threatSource": "local user or process on the developer workstation",
+      "prerequisites": "with read access to the project directory",
+      "threatAction": "read the OAuth refresh token stored in .glasp/access.json or a --auth .clasprc.json file",
+      "threatImpact": "unauthorized read and modification of the developer's Apps Script projects and deployments",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth refresh token",
+        "Apps Script projects"
+      ],
+      "statement": "A local user or process on the developer workstation with read access to the project directory can read the OAuth refresh token stored in .glasp/access.json or a --auth .clasprc.json file, which leads to unauthorized read and modification of the developer's Apps Script projects and deployments, resulting in reduced confidentiality and integrity of OAuth refresh token and Apps Script projects",
+      "status": "threatResolved"
+    },
+    {
+      "id": "98071b29-0ab0-5311-a8ee-0b978697beb1",
+      "numericId": 2,
+      "displayOrder": 2,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "High"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "PR #223 で .glasp/.gitignore を自動作成。残るリスク: 既にコミット済みの access.json と、利用者が .gitignore を書き換えた場合（README の無効化手順で対処）。"
+        }
+      ],
+      "tags": [
+        "Token storage"
+      ],
+      "threatSource": "internet-based actor",
+      "prerequisites": "with read access to a Git repository where a developer accidentally committed .glasp/",
+      "threatAction": "extract the OAuth refresh token from .glasp/access.json",
+      "threatImpact": "long-lived unauthorized access to the developer's Apps Script projects",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth refresh token",
+        "Apps Script projects"
+      ],
+      "statement": "An internet-based actor with read access to a Git repository where a developer accidentally committed .glasp/ can extract the OAuth refresh token from .glasp/access.json, which leads to long-lived unauthorized access to the developer's Apps Script projects, resulting in reduced confidentiality and integrity of OAuth refresh token and Apps Script projects",
+      "status": "threatResolved"
+    },
+    {
+      "id": "58d14792-e36b-5f75-a321-4b8ed024ad9a",
+      "numericId": 3,
+      "displayOrder": 3,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "S",
+            "T"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "Login CSRF。state の 1 回限り検証で防止済み。"
+        }
+      ],
+      "tags": [
+        "OAuth flow"
+      ],
+      "threatSource": "malicious web page or local process",
+      "prerequisites": "that knows the callback port while a login is in progress",
+      "threatAction": "send a forged request to /oauth2callback carrying the attacker's own authorization code",
+      "threatImpact": "glasp storing tokens for the attacker's Google account so the developer pushes code into the attacker's projects",
+      "impactedGoal": [
+        "integrity",
+        "confidentiality"
+      ],
+      "impactedAssets": [
+        "source code",
+        "OAuth session"
+      ],
+      "statement": "A malicious web page or local process that knows the callback port while a login is in progress can send a forged request to /oauth2callback carrying the attacker's own authorization code, which leads to glasp storing tokens for the attacker's Google account so the developer pushes code into the attacker's projects, resulting in reduced integrity and confidentiality of source code and OAuth session",
+      "status": "threatResolved"
+    },
+    {
+      "id": "3a0561aa-04d4-5d46-9ed9-8a81f126de1a",
+      "numericId": 4,
+      "displayOrder": 4,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "S",
+            "I"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "クライアントシークレットは秘匿できない（A2）ため、認可コード横取り対策は PKCE が本命。現状オプトイン。"
+        }
+      ],
+      "tags": [
+        "OAuth flow"
+      ],
+      "threatSource": "malicious local process",
+      "prerequisites": "that can observe the authorization redirect (e.g. via browser history, an extension, or binding the port first)",
+      "threatAction": "exchange the intercepted authorization code for tokens using the client secret extracted from the glasp binary",
+      "threatImpact": "the attacker obtaining access and refresh tokens for the developer's account",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth refresh token",
+        "Apps Script projects"
+      ],
+      "statement": "A malicious local process that can observe the authorization redirect (e.g. via browser history, an extension, or binding the port first) can exchange the intercepted authorization code for tokens using the client secret extracted from the glasp binary, which leads to the attacker obtaining access and refresh tokens for the developer's account, resulting in reduced confidentiality and integrity of OAuth refresh token and Apps Script projects",
+      "status": "threatIdentified"
+    },
+    {
+      "id": "da088780-3d6f-59d5-9e3a-5ee6d4810f91",
+      "numericId": 5,
+      "displayOrder": 5,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "S"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "デスクトップアプリ共通の構造的リスク。"
+        }
+      ],
+      "tags": [
+        "OAuth flow"
+      ],
+      "threatSource": "external threat actor",
+      "prerequisites": "who extracts the glasp OAuth client ID and secret from the public binary",
+      "threatAction": "build a phishing flow that shows the glasp consent screen and requests the same scopes",
+      "threatImpact": "victims granting the attacker access to their Apps Script projects while believing they are using glasp",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "user Google accounts",
+        "Apps Script projects"
+      ],
+      "statement": "An external threat actor who extracts the glasp OAuth client ID and secret from the public binary can build a phishing flow that shows the glasp consent screen and requests the same scopes, which leads to victims granting the attacker access to their Apps Script projects while believing they are using glasp, resulting in reduced confidentiality and integrity of user Google accounts and Apps Script projects",
+      "status": "threatIdentified"
+    },
+    {
+      "id": "b9c6cc63-046e-5e37-84cd-f7b62046d0ba",
+      "numericId": 6,
+      "displayOrder": 6,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "High"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I",
+            "E"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "起動トリガー制限・最小権限・egress block・トークンの個別の伏せ字登録（M24、実ランナーで確認済み）・利用者向け文書（M27）・Environment による main 限定と CI 専用 Google アカウント（M26）で対応済み（2026-11-20）。残るリスク: main に入ったワークフローや Action は読めるため、main へのレビューと SHA 固定が前提。漏れても影響は smoke 用プロジェクトに限られる。"
+        }
+      ],
+      "tags": [
+        "Token storage",
+        "CI"
+      ],
+      "threatSource": "actor with access to CI logs or workflow definitions",
+      "prerequisites": "where GLASP_AUTH is configured",
+      "threatAction": "print or exfiltrate the GLASP_AUTH value from the CI environment",
+      "threatImpact": "disclosure of the refresh token used for automated deployments",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth refresh token",
+        "production Apps Script deployments"
+      ],
+      "statement": "An actor with access to CI logs or workflow definitions where GLASP_AUTH is configured can print or exfiltrate the GLASP_AUTH value from the CI environment, which leads to disclosure of the refresh token used for automated deployments, resulting in reduced confidentiality and integrity of OAuth refresh token and production Apps Script deployments",
+      "status": "threatResolved"
+    },
+    {
+      "id": "bb8c63bb-9110-516f-b4fc-3c59d2eb12e1",
+      "numericId": 7,
+      "displayOrder": 7,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "E",
+            "T"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "スコープは最小限。ただし script.projects はユーザーが編集可能な全プロジェクトに及ぶ。"
+        }
+      ],
+      "tags": [
+        "Scope"
+      ],
+      "threatSource": "threat actor",
+      "prerequisites": "in possession of a stolen glasp access token",
+      "threatAction": "modify script content, create deployments or run functions in any Apps Script project the victim can edit",
+      "threatImpact": "malicious code running with the permissions of the project and its users",
+      "impactedGoal": [
+        "integrity"
+      ],
+      "impactedAssets": [
+        "Apps Script projects",
+        "data accessed by deployed scripts"
+      ],
+      "statement": "A threat actor in possession of a stolen glasp access token can modify script content, create deployments or run functions in any Apps Script project the victim can edit, which leads to malicious code running with the permissions of the project and its users, resulting in reduced integrity of Apps Script projects and data accessed by deployed scripts",
+      "status": "threatResolved"
+    },
+    {
+      "id": "64ccd55a-f403-5791-9ec6-4aa4092218aa",
+      "numericId": 8,
+      "displayOrder": 8,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "T",
+            "I"
+          ]
+        }
+      ],
+      "tags": [
+        "API communication"
+      ],
+      "threatSource": "network-based actor",
+      "prerequisites": "in a man-in-the-middle position",
+      "threatAction": "intercept or modify traffic between glasp and Google APIs",
+      "threatImpact": "token theft or injection of malicious script content",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth tokens",
+        "source code"
+      ],
+      "statement": "A network-based actor in a man-in-the-middle position can intercept or modify traffic between glasp and Google APIs, which leads to token theft or injection of malicious script content, resulting in reduced confidentiality and integrity of OAuth tokens and source code",
+      "status": "threatResolved"
+    },
+    {
+      "id": "12b4ed46-88ba-5615-ba76-2348a5e45321",
+      "numericId": 9,
+      "displayOrder": 9,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "T",
+            "E"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "共同編集者からの攻撃。パス検証で防止済み。"
+        }
+      ],
+      "tags": [
+        "API communication"
+      ],
+      "threatSource": "actor",
+      "prerequisites": "with edit access to an Apps Script project that a developer pulls or clones",
+      "threatAction": "name a remote file with path traversal sequences such as ../",
+      "threatImpact": "files written outside the project directory on the developer's machine",
+      "impactedGoal": [
+        "integrity"
+      ],
+      "impactedAssets": [
+        "developer workstation files"
+      ],
+      "statement": "An actor with edit access to an Apps Script project that a developer pulls or clones can name a remote file with path traversal sequences such as ../, which leads to files written outside the project directory on the developer's machine, resulting in reduced integrity of developer workstation files",
+      "status": "threatResolved"
+    },
+    {
+      "id": "3f427270-cee9-5b10-802a-c63c53d61861",
+      "numericId": 10,
+      "displayOrder": 10,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "キーワードベースのマスク。新オプション追加時に漏れるリスクあり。ファイル権限は 0644。"
+        }
+      ],
+      "tags": [
+        "History"
+      ],
+      "threatSource": "local user or anyone who later obtains the project directory",
+      "prerequisites": "",
+      "threatAction": "read secrets passed as command arguments from .glasp/history.jsonl",
+      "threatImpact": "disclosure of credentials or sensitive run parameters",
+      "impactedGoal": [
+        "confidentiality"
+      ],
+      "impactedAssets": [
+        "command arguments",
+        "run parameters"
+      ],
+      "statement": "A local user or anyone who later obtains the project directory can read secrets passed as command arguments from .glasp/history.jsonl, which leads to disclosure of credentials or sensitive run parameters, resulting in reduced confidentiality of command arguments and run parameters",
+      "status": "threatResolved"
+    },
+    {
+      "id": "15bacb4e-72f0-5427-a144-e37926833074",
+      "numericId": 11,
+      "displayOrder": 11,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "T"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "scriptId 一致などは検証済みだが、ペイロードの改ざん検知はない。"
+        }
+      ],
+      "tags": [
+        "History"
+      ],
+      "threatSource": "local actor",
+      "prerequisites": "with write access to .glasp/",
+      "threatAction": "tamper with history.jsonl archive paths or archived payload files",
+      "threatImpact": "unintended code being pushed when the developer runs push --history-id",
+      "impactedGoal": [
+        "integrity"
+      ],
+      "impactedAssets": [
+        "Apps Script projects",
+        "archived payloads"
+      ],
+      "statement": "A local actor with write access to .glasp/ can tamper with history.jsonl archive paths or archived payload files, which leads to unintended code being pushed when the developer runs push --history-id, resulting in reduced integrity of Apps Script projects and archived payloads",
+      "status": "threatIdentified"
+    },
+    {
+      "id": "db77eff8-db37-520d-a62c-1f8a3f6fcd06",
+      "numericId": 12,
+      "displayOrder": 12,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I"
+          ]
+        }
+      ],
+      "tags": [
+        "Logging"
+      ],
+      "threatSource": "developer or operator",
+      "prerequisites": "running glasp with debug logging enabled",
+      "threatAction": "capture tokens or authorization codes in log output",
+      "threatImpact": "credentials leaking into terminal scrollback, CI logs or bug reports",
+      "impactedGoal": [
+        "confidentiality"
+      ],
+      "impactedAssets": [
+        "OAuth tokens"
+      ],
+      "statement": "A developer or operator running glasp with debug logging enabled can capture tokens or authorization codes in log output, which leads to credentials leaking into terminal scrollback, CI logs or bug reports, resulting in reduced confidentiality of OAuth tokens",
+      "status": "threatResolved"
+    },
+    {
+      "id": "8c48542c-39b4-581c-b328-f04c4413e5f9",
+      "numericId": 13,
+      "displayOrder": 13,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "D"
+          ]
+        }
+      ],
+      "tags": [
+        "OAuth flow"
+      ],
+      "threatSource": "local process",
+      "prerequisites": "",
+      "threatAction": "keep the OAuth callback server waiting indefinitely by never completing the login",
+      "threatImpact": "a lingering open localhost port that accepts forged callbacks",
+      "impactedGoal": [
+        "availability"
+      ],
+      "impactedAssets": [
+        "OAuth login flow"
+      ],
+      "statement": "A local process can keep the OAuth callback server waiting indefinitely by never completing the login, which leads to a lingering open localhost port that accepts forged callbacks, resulting in reduced availability of OAuth login flow",
+      "status": "threatIdentified"
+    },
+    {
+      "id": "bf1f0c23-63cf-5564-8e4d-a7092750dc3b",
+      "numericId": 14,
+      "displayOrder": 14,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Medium"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "I"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "2026-11-20 に残存リスクを受容して解決済みとした。glasp リポジトリの CI では後続 Action は SHA 固定かつ egress block、secret は main 限定の Environment にあり、トークンは CI 専用アカウントのもの。同じジョブ内の後続ステップから読めることは GITHUB_ENV の仕組み上なくせず、利用者側のワークフローは M25 の文書で注意喚起するにとどまる（強制する手段はない）。"
+        }
+      ],
+      "tags": [
+        "CI"
+      ],
+      "threatSource": "third-party action or later workflow step",
+      "prerequisites": "running in the same job after the glasp action's auth input is set",
+      "threatAction": "read GLASP_AUTH from the job environment exported via GITHUB_ENV",
+      "threatImpact": "exfiltration of the refresh token used for automated deployments",
+      "impactedGoal": [
+        "confidentiality",
+        "integrity"
+      ],
+      "impactedAssets": [
+        "OAuth refresh token",
+        "production Apps Script deployments"
+      ],
+      "statement": "A third-party action or later workflow step running in the same job after the glasp action's auth input is set can read GLASP_AUTH from the job environment exported via GITHUB_ENV, which leads to exfiltration of the refresh token used for automated deployments, resulting in reduced confidentiality and integrity of OAuth refresh token and production Apps Script deployments",
+      "status": "threatResolved"
+    },
+    {
+      "id": "bb489b95-f11d-5459-b0af-7df787ff73ff",
+      "numericId": 15,
+      "displayOrder": 15,
+      "metadata": [
+        {
+          "key": "Priority",
+          "value": "Low"
+        },
+        {
+          "key": "STRIDE",
+          "value": [
+            "T",
+            "E"
+          ]
+        },
+        {
+          "key": "Comments",
+          "value": "env 経由の受け渡しとランダム区切り文字で防止済み。"
+        }
+      ],
+      "tags": [
+        "CI"
+      ],
+      "threatSource": "actor",
+      "prerequisites": "who can influence the value passed to the action's auth, client-id or client-secret inputs",
+      "threatAction": "inject additional environment variables or shell commands through the action's GITHUB_ENV export",
+      "threatImpact": "arbitrary code execution in later steps with access to all job secrets",
+      "impactedGoal": [
+        "integrity",
+        "confidentiality"
+      ],
+      "impactedAssets": [
+        "CI runner",
+        "repository secrets"
+      ],
+      "statement": "An actor who can influence the value passed to the action's auth, client-id or client-secret inputs can inject additional environment variables or shell commands through the action's GITHUB_ENV export, which leads to arbitrary code execution in later steps with access to all job secrets, resulting in reduced integrity and confidentiality of CI runner and repository secrets",
+      "status": "threatResolved"
+    }
+  ]
+}

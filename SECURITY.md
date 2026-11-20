@@ -41,6 +41,10 @@ You should receive a response within 7 days. If the vulnerability is confirmed, 
 - Issues in upstream dependencies (report to the respective project)
 - Social engineering attacks
 
+## Threat Model
+
+The design-level threats and mitigations are documented in [security/](security/README.md) in the [Threat Composer](https://github.com/awslabs/threat-composer) format.
+
 ## Secure Development
 
 - OAuth client secrets are never cached locally (only tokens)
