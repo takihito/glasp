@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>__TITLE__</title>
+<style>
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f0efec; --border: #e2e0db;
+  --text: #1f1f1c; --muted: #6b6a65; --accent: #2f5bd3; --accent-soft: #e6ecfb;
+  --high: #c2410c; --high-soft: #fdebe2; --medium: #a16207; --medium-soft: #fbf2d9;
+  --low: #4b5563; --low-soft: #eceef1;
+  --ok: #15803d; --ok-soft: #e3f4e8; --todo: #b42318; --todo-soft: #fbe7e5;
+  --prog: #1d4ed8; --prog-soft: #e3ebfc;
+  --radius: 10px; --shadow: 0 1px 2px rgba(0,0,0,.05);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --border: #363632;
+    --text: #ecebe7; --muted: #a09f99; --accent: #8aa8ff; --accent-soft: #24304f;
+    --high: #fb923c; --high-soft: #3b2417; --medium: #facc15; --medium-soft: #3a3115;
+    --low: #cbd5e1; --low-soft: #2b2f36;
+    --ok: #4ade80; --ok-soft: #173323; --todo: #f87171; --todo-soft: #3a1c1b;
+    --prog: #93b4ff; --prog-soft: #1f2a46;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+header h1 { margin: 0; font-size: 26px; letter-spacing: .01em; }
+header .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+code, .mono { font-family: var(--mono); font-size: .9em; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 20px 0 8px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+.stat .label { color: var(--muted); font-size: 12px; }
+.stat .value { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat .detail { color: var(--muted); font-size: 12px; }
+.stat.alert .value { color: var(--todo); }
+
+/* tabs */
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 24px 0 16px; overflow-x: auto; }
+nav.tabs button {
+  appearance: none; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600;
+  padding: 10px 14px; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+}
+nav.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+nav.tabs .count { font-weight: 500; color: var(--muted); margin-left: 4px; font-size: 12px; }
+section[hidden] { display: none; }
+
+/* filters */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.filters input[type=search], .filters select {
+  font: inherit; font-size: 14px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+}
+.filters input[type=search] { flex: 1 1 220px; min-width: 0; }
+.filters .result { color: var(--muted); font-size: 13px; margin-left: auto; }
+
+/* cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; margin-bottom: 12px; box-shadow: var(--shadow); scroll-margin-top: 16px;
+}
+.card:target, .card.flash { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.card-id { font-family: var(--mono); font-weight: 700; color: var(--muted); margin-right: 4px; }
+.statement { font-size: 15.5px; margin: 0; }
+.comment { margin-top: 10px; padding: 8px 12px; background: var(--surface-2); border-radius: 8px; font-size: 13.5px; color: var(--muted); }
+.comment::before { content: "メモ: "; font-weight: 600; }
+
+.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; line-height: 1.7; white-space: nowrap; }
+.p-High { color: var(--high); background: var(--high-soft); }
+.p-Medium { color: var(--medium); background: var(--medium-soft); }
+.p-Low { color: var(--low); background: var(--low-soft); }
+.s-ok { color: var(--ok); background: var(--ok-soft); }
+.s-todo { color: var(--todo); background: var(--todo-soft); }
+.s-prog { color: var(--prog); background: var(--prog-soft); }
+.s-na { color: var(--muted); background: var(--surface-2); }
+.stride { font-family: var(--mono); color: var(--accent); background: var(--accent-soft); }
+.tag { color: var(--muted); background: transparent; border: 1px solid var(--border); font-weight: 500; }
+
+details.parts { margin-top: 10px; }
+details.parts summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+dl.grammar { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 0; font-size: 13.5px; }
+dl.grammar dt { color: var(--muted); }
+dl.grammar dd { margin: 0; }
+
+.links { margin-top: 12px; display: grid; gap: 6px; }
+.links .row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13.5px; }
+.links .row > span:first-child { color: var(--muted); min-width: 3.5em; }
+a.ref {
+  font-family: var(--mono); font-size: 12.5px; text-decoration: none; color: var(--accent);
+  background: var(--accent-soft); padding: 0 7px; border-radius: 6px;
+}
+a.ref:hover { text-decoration: underline; }
+a.ref .st { font-family: -apple-system, sans-serif; margin-left: 4px; opacity: .8; }
+
+/* matrix */
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+table.matrix { border-collapse: collapse; font-size: 12.5px; min-width: 100%; }
+table.matrix th, table.matrix td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: center; white-space: nowrap; }
+table.matrix thead th { position: sticky; top: 0; background: var(--surface-2); font-family: var(--mono); }
+table.matrix tbody th { text-align: left; font-family: var(--mono); background: var(--surface); position: sticky; left: 0; }
+table.matrix td.on { color: var(--accent); font-weight: 700; }
+table.matrix td.on.ok { color: var(--ok); }
+table.matrix td.on.todo { color: var(--todo); }
+.legend { color: var(--muted); font-size: 12.5px; margin: 8px 2px 0; }
+
+/* markdown */
+.md h3 { font-size: 17px; margin: 22px 0 6px; }
+.md h4 { font-size: 15px; margin: 18px 0 4px; }
+.md p { margin: 6px 0; }
+.md ul, .md ol { padding-left: 1.4em; margin: 6px 0; }
+.md li { margin: 2px 0; }
+.doc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 22px 16px; margin-bottom: 16px; }
+.doc > h2 { font-size: 13px; color: var(--muted); letter-spacing: .06em; margin: 16px 0 0; }
+
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+
+@media (max-width: 560px) {
+  dl.grammar { grid-template-columns: 1fr; }
+  dl.grammar dt { margin-top: 6px; }
+  .filters .result { margin-left: 0; width: 100%; }
+}
+@media print {
+  nav.tabs, .filters { display: none; }
+  section[hidden] { display: block !important; }
+  .card { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="app-name"></h1>
+    <div class="sub">脅威モデル（Threat Composer 形式 <span id="schema-ver"></span>）</div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+
+  <section id="tab-overview" role="tabpanel"></section>
+
+  <section id="tab-threats" role="tabpanel" hidden>
+    <div class="filters">
+      <input type="search" id="q-threat" placeholder="脅威を検索（本文・メモ・タグ）" aria-label="脅威を検索">
+      <select id="f-priority" aria-label="優先度"><option value="">優先度: すべて</option><option>High</option><option>Medium</option><option>Low</option></select>
+      <select id="f-status" aria-label="状態"><option value="">状態: すべて</option></select>
+      <select id="f-stride" aria-label="STRIDE"><option value="">STRIDE: すべて</option></select>
+      <select id="f-tag" aria-label="タグ"><option value="">タグ: すべて</option></select>
+      <span class="result" id="r-threat"></span>
+    </div>
+    <div id="list-threats"></div>
+  </section>
+
+  <section id="tab-mitigations" role="tabpanel" hidden>
+    <div class="filters">
+      <input type="search" id="q-mit" placeholder="対策を検索" aria-label="対策を検索">
+      <select id="f-mstatus" aria-label="状態"><option value="">状態: すべて</option></select>
+      <span class="result" id="r-mit"></span>
+    </div>
+    <div id="list-mitigations"></div>
+  </section>
+
+  <section id="tab-assumptions" role="tabpanel" hidden>
+    <div id="list-assumptions"></div>
+  </section>
+
+  <section id="tab-matrix" role="tabpanel" hidden>
+    <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+    <p class="legend">行 = 脅威、列 = 対策。● = 紐づけあり（緑: 対応済みの対策 / 赤: 未着手の対策）。番号をクリックすると詳細へ移動します。</p>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script type="application/json" id="tc-data">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+
+  var data;
+  try {
+    data = JSON.parse(document.getElementById("tc-data").textContent);
+  } catch (e) {
+    document.body.innerHTML = '<p style="padding:24px">脅威モデルの JSON を読み込めませんでした。</p>';
+    return;
+  }
+
+  var threats = data.threats || [];
+  var mitigations = data.mitigations || [];
+  var assumptions = data.assumptions || [];
+  var mLinks = data.mitigationLinks || [];
+  var aLinks = data.assumptionLinks || [];
+
+  var THREAT_STATUS = {
+    threatIdentified: { label: "未対応", cls: "s-todo" },
+    threatResolved: { label: "対応済み", cls: "s-ok" },
+    threatResolvedNotUseful: { label: "対象外", cls: "s-na" }
+  };
+  var MIT_STATUS = {
+    mitigationIdentified: { label: "未着手", cls: "s-todo" },
+    mitigationInProgress: { label: "対応中", cls: "s-prog" },
+    mitigationResolved: { label: "対応済み", cls: "s-ok" },
+    mitigationResolvedWillNotAction: { label: "対応しない", cls: "s-na" }
+  };
+  var STRIDE = { S: "なりすまし", T: "改ざん", R: "否認", I: "情報漏洩", D: "サービス拒否", E: "権限昇格" };
+  var PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+
+  // ---------- helpers ----------
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function meta(item, key) {
+    var m = (item.metadata || []).filter(function (x) { return x.key === key; })[0];
+    return m ? m.value : undefined;
+  }
+  function inline(s) {
+    // escape first, then apply a tiny subset of inline markdown
+    return esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+  function markdown(src) {
+    var lines = String(src || "").split(/\r?\n/), out = [], list = null;
+    function closeList() { if (list) { out.push("</" + list + ">"); list = null; } }
+    lines.forEach(function (line) {
+      var m;
+      if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+        closeList();
+        var lvl = Math.min(Math.max(m[1].length, 3), 4);
+        out.push("<h" + lvl + ">" + inline(m[2]) + "</h" + lvl + ">");
+      } else if ((m = line.match(/^\s*[-*]\s+(.*)$/))) {
+        if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; }
+        out.push("<li>" + inline(m[1]) + "</li>");
+      } else if ((m = line.match(/^\s*\d+\.\s+(.*)$/))) {
+        if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; }
+        out.push("<li>" + inline(m[1]) + "</li>");
+      } else if (line.trim() === "") {
+        closeList();
+      } else {
+        closeList();
+        out.push("<p>" + inline(line) + "</p>");
+      }
+    });
+    closeList();
+    return out.join("\n");
+  }
+  function badge(text, cls, title) {
+    return '<span class="badge ' + cls + '"' + (title ? ' title="' + esc(title) + '"' : "") + ">" + esc(text) + "</span>";
+  }
+  function tId(t) { return "T" + t.numericId; }
+  function mId(m) { return "M" + m.numericId; }
+  function aId(a) { return "A" + a.numericId; }
+
+  var byId = {};
+  threats.forEach(function (t) { byId[t.id] = { kind: "T", item: t }; });
+  mitigations.forEach(function (m) { byId[m.id] = { kind: "M", item: m }; });
+  assumptions.forEach(function (a) { byId[a.id] = { kind: "A", item: a }; });
+
+  function ref(id) {
+    var e = byId[id];
+    if (!e) return "";
+    var label = e.kind + e.item.numericId;
+    var st = "";
+    if (e.kind === "M" && MIT_STATUS[e.item.status]) st = '<span class="st">' + esc(MIT_STATUS[e.item.status].label) + "</span>";
+    if (e.kind === "T" && THREAT_STATUS[e.item.status]) st = '<span class="st">' + esc(THREAT_STATUS[e.item.status].label) + "</span>";
+    var title = e.item.statement || e.item.content || "";
+    return '<a class="ref" href="#' + label + '" data-goto="' + label + '" title="' + esc(title) + '">' + label + st + "</a>";
+  }
+  function refs(ids) {
+    return ids.length ? ids.map(ref).join(" ") : '<span style="color:var(--muted)">なし</span>';
+  }
+
+  function mitigationsOf(threatId) {
+    return mLinks.filter(function (l) { return l.linkedId === threatId; }).map(function (l) { return l.mitigationId; });
+  }
+  function assumptionsOf(id) {
+    return aLinks.filter(function (l) { return l.linkedId === id; }).map(function (l) { return l.assumptionId; });
+  }
+  function threatsOfMitigation(mid) {
+    return mLinks.filter(function (l) { return l.mitigationId === mid && byId[l.linkedId] && byId[l.linkedId].kind === "T"; }).map(function (l) { return l.linkedId; });
+  }
+  function itemsOfAssumption(aid) {
+    return aLinks.filter(function (l) { return l.assumptionId === aid; }).map(function (l) { return l.linkedId; });
+  }
+  function byNum(a, b) { return a.numericId - b.numericId; }
+
+  // ---------- header & stats ----------
+  var name = (data.applicationInfo && data.applicationInfo.name) || "脅威モデル";
+  document.getElementById("app-name").textContent = name;
+  document.getElementById("schema-ver").textContent = "v" + (data.schema || "?");
+
+  function count(arr, fn) { return arr.filter(fn).length; }
+  var openThreats = count(threats, function (t) { return t.status === "threatIdentified"; });
+  var openHigh = count(threats, function (t) { return t.status === "threatIdentified" && meta(t, "Priority") === "High"; });
+  var noMit = count(threats, function (t) { return mitigationsOf(t.id).length === 0; });
+  var mitTodo = count(mitigations, function (m) { return m.status === "mitigationIdentified" || m.status === "mitigationInProgress"; });
+
+  var stats = [
+    { label: "脅威", value: threats.length, detail: "未対応 " + openThreats + " / 対応済み " + (threats.length - openThreats) },
+    { label: "未対応の High", value: openHigh, detail: "優先して対処すべき脅威", alert: openHigh > 0 },
+    { label: "対策", value: mitigations.length, detail: "未着手・対応中 " + mitTodo },
+    { label: "前提", value: assumptions.length, detail: "対策のない脅威 " + noMit, alert: false }
+  ];
+  document.getElementById("stats").innerHTML = stats.map(function (s) {
+    return '<div class="stat' + (s.alert ? " alert" : "") + '"><div class="label">' + esc(s.label) + '</div><div class="value">' +
+      esc(s.value) + '</div><div class="detail">' + esc(s.detail) + "</div></div>";
+  }).join("");
+
+  // ---------- tabs ----------
+  var TABS = [
+    { id: "overview", label: "概要" },
+    { id: "threats", label: "脅威", count: threats.length },
+    { id: "mitigations", label: "対策", count: mitigations.length },
+    { id: "assumptions", label: "前提", count: assumptions.length },
+    { id: "matrix", label: "対応表" }
+  ];
+  var tabsEl = document.getElementById("tabs");
+  tabsEl.innerHTML = TABS.map(function (t) {
+    return '<button role="tab" data-tab="' + t.id + '" aria-selected="false">' + esc(t.label) +
+      (t.count != null ? '<span class="count">' + t.count + "</span>" : "") + "</button>";
+  }).join("");
+  function showTab(id) {
+    TABS.forEach(function (t) {
+      document.getElementById("tab-" + t.id).hidden = t.id !== id;
+      tabsEl.querySelector('[data-tab="' + t.id + '"]').setAttribute("aria-selected", String(t.id === id));
+    });
+    try { localStorage.setItem("tc-viewer-tab", id); } catch (e) { /* ignore */ }
+  }
+  tabsEl.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tab]");
+    if (b) showTab(b.getAttribute("data-tab"));
+  });
+
+  // ---------- overview ----------
+  var ov = "";
+  [["アプリケーション", data.applicationInfo], ["アーキテクチャ", data.architecture], ["データフロー", data.dataflow]].forEach(function (p) {
+    if (p[1] && p[1].description) {
+      ov += '<div class="doc"><h2>' + esc(p[0]) + '</h2><div class="md">' + markdown(p[1].description) + "</div>";
+      if (p[1].image && /^(https:|data:image\/)/.test(p[1].image)) {
+        ov += '<p><img src="' + esc(p[1].image) + '" alt="' + esc(p[0]) + '" style="max-width:100%"></p>';
+      }
+      ov += "</div>";
+    }
+  });
+  document.getElementById("tab-overview").innerHTML = ov || '<div class="empty">概要の記載はありません。</div>';
+
+  // ---------- threats ----------
+  var GRAMMAR = [
+    ["threatSource", "脅威の主体"], ["prerequisites", "前提条件"], ["threatAction", "行為"],
+    ["threatImpact", "影響"], ["impactedGoal", "損なわれるもの"], ["impactedAssets", "影響を受ける資産"]
+  ];
+  function threatCard(t) {
+    var p = meta(t, "Priority"), stride = meta(t, "STRIDE") || [], comment = meta(t, "Comments");
+    var st = THREAT_STATUS[t.status] || { label: t.status || "-", cls: "s-na" };
+    var h = '<article class="card" id="' + tId(t) + '"><div class="card-head"><span class="card-id">' + tId(t) + "</span>";
+    if (p) h += badge(p, "p-" + p);
+    h += badge(st.label, st.cls);
+    stride.forEach(function (s) { h += badge(s, "stride", STRIDE[s] || s); });
+    (t.tags || []).forEach(function (tag) { h += badge(tag, "tag"); });
+    h += '</div><p class="statement">' + esc(t.statement) + "</p>";
+    if (comment) h += '<div class="comment">' + inline(comment) + "</div>";
+    h += '<details class="parts"><summary>脅威文の内訳</summary><dl class="grammar">';
+    GRAMMAR.forEach(function (g) {
+      var v = t[g[0]];
+      if (Array.isArray(v)) v = v.filter(Boolean).join("、");
+      if (v) h += "<dt>" + esc(g[1]) + "</dt><dd>" + esc(v) + "</dd>";
+    });
+    h += "</dl></details>";
+    h += '<div class="links"><div class="row"><span>対策</span><span>' + refs(mitigationsOf(t.id)) + "</span></div>" +
+      '<div class="row"><span>前提</span><span>' + refs(assumptionsOf(t.id)) + "</span></div></div></article>";
+    return h;
+  }
+
+  var allStatuses = Object.keys(THREAT_STATUS).filter(function (k) { return threats.some(function (t) { return t.status === k; }); });
+  var allStride = Object.keys(STRIDE).filter(function (k) { return threats.some(function (t) { return (meta(t, "STRIDE") || []).indexOf(k) >= 0; }); });
+  var allTags = [];
+  threats.forEach(function (t) { (t.tags || []).forEach(function (g) { if (allTags.indexOf(g) < 0) allTags.push(g); }); });
+
+  function addOptions(sel, items) {
+    sel.insertAdjacentHTML("beforeend", items.map(function (it) {
+      return '<option value="' + esc(it[0]) + '">' + esc(it[1]) + "</option>";
+    }).join(""));
+  }
+  addOptions(document.getElementById("f-status"), allStatuses.map(function (k) { return [k, THREAT_STATUS[k].label]; }));
+  addOptions(document.getElementById("f-stride"), allStride.map(function (k) { return [k, k + " " + STRIDE[k]]; }));
+  addOptions(document.getElementById("f-tag"), allTags.map(function (k) { return [k, k]; }));
+
+  function renderThreats() {
+    var q = document.getElementById("q-threat").value.trim().toLowerCase();
+    var fp = document.getElementById("f-priority").value;
+    var fs = document.getElementById("f-status").value;
+    var fst = document.getElementById("f-stride").value;
+    var ft = document.getElementById("f-tag").value;
+    var list = threats.slice().sort(byNum).filter(function (t) {
+      if (fp && meta(t, "Priority") !== fp) return false;
+      if (fs && t.status !== fs) return false;
+      if (fst && (meta(t, "STRIDE") || []).indexOf(fst) < 0) return false;
+      if (ft && (t.tags || []).indexOf(ft) < 0) return false;
+      if (q) {
+        var hay = [tId(t), t.statement, meta(t, "Comments"), (t.tags || []).join(" ")].join(" ").toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    document.getElementById("list-threats").innerHTML = list.length ? list.map(threatCard).join("") : '<div class="empty">条件に合う脅威はありません。</div>';
+    document.getElementById("r-threat").textContent = list.length + " / " + threats.length + " 件";
+  }
+  ["q-threat", "f-priority", "f-status", "f-stride", "f-tag"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", renderThreats);
+  });
+
+  // ---------- mitigations ----------
+  addOptions(document.getElementById("f-mstatus"), Object.keys(MIT_STATUS).filter(function (k) {
+    return mitigations.some(function (m) { return m.status === k; });
+  }).map(function (k) { return [k, MIT_STATUS[k].label]; }));
+
+  function mitigationCard(m) {
+    var st = MIT_STATUS[m.status] || { label: m.status || "-", cls: "s-na" };
+    var comment = meta(m, "Comments");
+    var h = '<article class="card" id="' + mId(m) + '"><div class="card-head"><span class="card-id">' + mId(m) + "</span>" + badge(st.label, st.cls) + "</div>";
+    h += '<p class="statement">' + esc(m.content) + "</p>";
+    if (comment) h += '<div class="comment">' + inline(comment) + "</div>";
+    h += '<div class="links"><div class="row"><span>脅威</span><span>' + refs(threatsOfMitigation(m.id)) + "</span></div>";
+    var as = assumptionsOf(m.id);
+    if (as.length) h += '<div class="row"><span>前提</span><span>' + refs(as) + "</span></div>";
+    return h + "</div></article>";
+  }
+  function renderMitigations() {
+    var q = document.getElementById("q-mit").value.trim().toLowerCase();
+    var fs = document.getElementById("f-mstatus").value;
+    var list = mitigations.slice().sort(byNum).filter(function (m) {
+      if (fs && m.status !== fs) return false;
+      if (q && [mId(m), m.content, meta(m, "Comments")].join(" ").toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    document.getElementById("list-mitigations").innerHTML = list.length ? list.map(mitigationCard).join("") : '<div class="empty">条件に合う対策はありません。</div>';
+    document.getElementById("r-mit").textContent = list.length + " / " + mitigations.length + " 件";
+  }
+  ["q-mit", "f-mstatus"].forEach(function (id) { document.getElementById(id).addEventListener("input", renderMitigations); });
+
+  // ---------- assumptions ----------
+  document.getElementById("list-assumptions").innerHTML = assumptions.length ? assumptions.slice().sort(byNum).map(function (a) {
+    var comment = meta(a, "Comments");
+    var h = '<article class="card" id="' + aId(a) + '"><div class="card-head"><span class="card-id">' + aId(a) + "</span></div>";
+    h += '<p class="statement">' + esc(a.content) + "</p>";
+    if (comment) h += '<div class="comment">' + inline(comment) + "</div>";
+    return h + '<div class="links"><div class="row"><span>関連</span><span>' + refs(itemsOfAssumption(a.id)) + "</span></div></div></article>";
+  }).join("") : '<div class="empty">前提はありません。</div>';
+
+  // ---------- matrix ----------
+  (function () {
+    var ms = mitigations.slice().sort(byNum), ts = threats.slice().sort(byNum);
+    var linked = {};
+    mLinks.forEach(function (l) { linked[l.mitigationId + "|" + l.linkedId] = true; });
+    var h = "<thead><tr><th></th>" + ms.map(function (m) {
+      return '<th title="' + esc(m.content) + '"><a class="ref" href="#' + mId(m) + '" data-goto="' + mId(m) + '">' + mId(m) + "</a></th>";
+    }).join("") + "</tr></thead><tbody>";
+    ts.forEach(function (t) {
+      h += '<tr><th title="' + esc(t.statement) + '"><a class="ref" href="#' + tId(t) + '" data-goto="' + tId(t) + '">' + tId(t) + "</a></th>";
+      ms.forEach(function (m) {
+        if (linked[m.id + "|" + t.id]) {
+          var cls = m.status === "mitigationResolved" ? "ok" : (m.status === "mitigationIdentified" ? "todo" : "");
+          h += '<td class="on ' + cls + '" title="' + esc(tId(t) + " × " + mId(m)) + '">●</td>';
+        } else {
+          h += "<td></td>";
+        }
+      });
+      h += "</tr>";
+    });
+    document.getElementById("matrix").innerHTML = h + "</tbody>";
+  })();
+
+  // ---------- navigation between items ----------
+  function goTo(label) {
+    var kind = label.charAt(0);
+    var tab = kind === "T" ? "threats" : kind === "M" ? "mitigations" : "assumptions";
+    if (kind === "T") {
+      ["q-threat", "f-priority", "f-status", "f-stride", "f-tag"].forEach(function (id) { document.getElementById(id).value = ""; });
+      renderThreats();
+    } else if (kind === "M") {
+      ["q-mit", "f-mstatus"].forEach(function (id) { document.getElementById(id).value = ""; });
+      renderMitigations();
+    }
+    showTab(tab);
+    var el = document.getElementById(label);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("flash");
+      setTimeout(function () { el.classList.remove("flash"); }, 1600);
+    }
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-goto]");
+    if (!a) return;
+    e.preventDefault();
+    var label = a.getAttribute("data-goto");
+    try { history.replaceState(null, "", "#" + label); } catch (err) { /* ignore */ }
+    goTo(label);
+  });
+
+  // ---------- init ----------
+  renderThreats();
+  renderMitigations();
+  document.getElementById("footer").textContent =
+    "このページは " + name + " の .tc.json から生成しました。編集は元の JSON（または Threat Composer）で行ってください。";
+
+  var initial = "overview";
+  try { initial = localStorage.getItem("tc-viewer-tab") || initial; } catch (e) { /* ignore */ }
+  if (!document.getElementById("tab-" + initial)) initial = "overview";
+  var hash = decodeURIComponent(location.hash.slice(1));
+  if (/^[TMA]\d+$/.test(hash)) {
+    goTo(hash);
+  } else {
+    showTab(initial);
+  }
+})();
+</script>
+</body>
+</html>
