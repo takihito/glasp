@@ -262,11 +262,11 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
     return out.join("\n");
   }
   function badge(text, cls, title) {
-    return '<span class="badge ' + cls + '"' + (title ? ' title="' + esc(title) + '"' : "") + ">" + esc(text) + "</span>";
+    return '<span class="badge ' + esc(cls) + '"' + (title ? ' title="' + esc(title) + '"' : "") + ">" + esc(text) + "</span>";
   }
-  function tId(t) { return "T" + t.numericId; }
-  function mId(m) { return "M" + m.numericId; }
-  function aId(a) { return "A" + a.numericId; }
+  function tId(t) { return "T" + Number(t.numericId); }
+  function mId(m) { return "M" + Number(m.numericId); }
+  function aId(a) { return "A" + Number(a.numericId); }
 
   var byId = {};
   threats.forEach(function (t) { byId[t.id] = { kind: "T", item: t }; });
@@ -276,7 +276,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
   function ref(id) {
     var e = byId[id];
     if (!e) return "";
-    var label = e.kind + e.item.numericId;
+    var label = e.kind + Number(e.item.numericId);
     var st = "";
     if (e.kind === "M" && MIT_STATUS[e.item.status]) st = '<span class="st">' + esc(MIT_STATUS[e.item.status].label) + "</span>";
     if (e.kind === "T" && THREAT_STATUS[e.item.status]) st = '<span class="st">' + esc(THREAT_STATUS[e.item.status].label) + "</span>";

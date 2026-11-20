@@ -18,10 +18,12 @@ def main():
     with open(os.path.join(HERE, "viewer-template.html"), encoding="utf-8") as fp:
         tpl = fp.read()
 
-    # JSON inside <script type="application/json">: neutralise "</" and HTML
-    # comment openers so the payload can never terminate the script element.
+    # JSON inside <script type="application/json">: write every "<" as the
+    # JSON escape \u003c so the payload can never close the script element or
+    # open an HTML comment, and JSON.parse still restores the original text.
+    # "<" only appears inside JSON strings, where \u003c is a valid escape.
     payload = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
-    payload = payload.replace("</", "<\\/").replace("<!--", "<\\!--")
+    payload = payload.replace("<", "\\u003c")
 
     name = (doc.get("applicationInfo") or {}).get("name") or "Threat Model"
     title = html.escape(f"{name} 脅威モデル")
