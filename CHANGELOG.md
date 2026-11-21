@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.4](https://github.com/takihito/glasp/compare/v0.5.3...v0.5.4) - 2026-11-21
+
+- feat(config): create .glasp/.gitignore to keep tokens out of Git by @takihito in https://github.com/takihito/glasp/pull/223
+- fix(action): mask tokens inside GLASP_AUTH and document CI security by @takihito in https://github.com/takihito/glasp/pull/224
+- fix(action): mask both decoded and escaped credential values by @takihito in https://github.com/takihito/glasp/pull/226
+- ci(smoke): run smoke jobs in the main-only smoke environment by @takihito in https://github.com/takihito/glasp/pull/227
+- docs(security): add Threat Composer threat model and HTML viewer by @takihito in https://github.com/takihito/glasp/pull/228
+- fix(security): create history and archive files with owner-only permissions (M13) by @takihito in https://github.com/takihito/glasp/pull/229
+
 ## [v0.5.3](https://github.com/takihito/glasp/compare/v0.5.2...v0.5.3) - 2026-11-17
 
 - build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/195
