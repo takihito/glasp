@@ -46,7 +46,7 @@ func PullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalCon
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	archiveRoot := filepath.Join(projectRoot, ".glasp", "archive", scriptID, "pull", timestamp)
-	if err := os.MkdirAll(archiveRoot, 0755); err != nil {
+	if err := os.MkdirAll(archiveRoot, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	manifestPath := filepath.Join(archiveRoot, "manifest.json")
@@ -64,10 +64,10 @@ func PullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalCon
 
 	canonicalDir := filepath.Join(archiveRoot, "canonical")
 	workingDir := filepath.Join(archiveRoot, "working")
-	if err := os.MkdirAll(canonicalDir, 0755); err != nil {
+	if err := os.MkdirAll(canonicalDir, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create canonical archive directory: %w", err)
 	}
-	if err := os.MkdirAll(workingDir, 0755); err != nil {
+	if err := os.MkdirAll(workingDir, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create working archive directory: %w", err)
 	}
 
@@ -76,6 +76,7 @@ func PullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalCon
 		return "", err
 	}
 	canonicalOpts.FileExtensions = syncer.DefaultFileExtensions()
+	canonicalOpts.PrivateOutput = true
 	if _, err := syncer.ApplyRemoteContent(canonicalOpts, canonicalContent); err != nil {
 		return "", err
 	}
@@ -84,6 +85,7 @@ func PullRun(projectRoot, scriptID string, cfg *config.ClaspConfig, canonicalCon
 	if err != nil {
 		return "", err
 	}
+	workingOpts.PrivateOutput = true
 	if _, err := syncer.ApplyRemoteContent(workingOpts, workingContent); err != nil {
 		return "", err
 	}
@@ -103,7 +105,7 @@ func PushRun(projectRoot, scriptID string, workingFiles, payloadFiles []syncer.P
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	archiveRoot := filepath.Join(projectRoot, ".glasp", "archive", scriptID, "push", timestamp)
-	if err := os.MkdirAll(archiveRoot, 0755); err != nil {
+	if err := os.MkdirAll(archiveRoot, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create archive directory: %w", err)
 	}
 	manifestPath := filepath.Join(archiveRoot, "manifest.json")
@@ -122,10 +124,10 @@ func PushRun(projectRoot, scriptID string, workingFiles, payloadFiles []syncer.P
 
 	workingDir := filepath.Join(archiveRoot, "working")
 	payloadDir := filepath.Join(archiveRoot, "payload")
-	if err := os.MkdirAll(workingDir, 0755); err != nil {
+	if err := os.MkdirAll(workingDir, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create working archive directory: %w", err)
 	}
-	if err := os.MkdirAll(payloadDir, 0755); err != nil {
+	if err := os.MkdirAll(payloadDir, syncer.PrivateDirPerm); err != nil {
 		return "", fmt.Errorf("failed to create payload archive directory: %w", err)
 	}
 	if err := syncer.ArchiveLocalFiles(workingDir, workingFiles); err != nil {
@@ -147,7 +149,7 @@ func writeManifest(path string, manifest Manifest) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0644); err != nil {
+	if err := os.WriteFile(path, append(data, '\n'), syncer.PrivateFilePerm); err != nil {
 		return fmt.Errorf("failed to write manifest: %w", err)
 	}
 	return nil

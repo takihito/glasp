@@ -47,7 +47,21 @@ type Options struct {
 	// not surprising, behavior. Callers use this to surface a "N files
 	// skipped" summary so a file missing from a push isn't a silent mystery.
 	OnSkip func(SkippedFile)
+	// PrivateOutput makes ApplyRemoteContent create directories as 0700 and
+	// files as 0600 instead of the usual 0755 / 0644. It is used when the
+	// destination is glasp's own archive under .glasp/archive/, which can
+	// hold script source the user never meant to share with other local
+	// users (threat model M13); regular pull output keeps normal project
+	// permissions.
+	PrivateOutput bool
 }
+
+// Permissions for archive output (.glasp/archive/) — owner-only, as
+// defense in depth on top of the 0700 .glasp/ directory.
+const (
+	PrivateDirPerm  os.FileMode = 0700
+	PrivateFilePerm os.FileMode = 0600
+)
 
 // SkipReason identifies why CollectLocalFiles did not collect a candidate file.
 type SkipReason string
@@ -440,10 +454,10 @@ func ArchiveLocalFiles(archiveRoot string, files []ProjectFile) error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), PrivateDirPerm); err != nil {
 			return fmt.Errorf("failed to create archive directory: %w", err)
 		}
-		if err := fsutil.WriteFileAtomic(targetPath, []byte(file.Source), 0644); err != nil {
+		if err := fsutil.WriteFileAtomic(targetPath, []byte(file.Source), PrivateFilePerm); err != nil {
 			return fmt.Errorf("failed to write archive file: %w", err)
 		}
 	}
@@ -472,6 +486,10 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		return nil, fmt.Errorf("failed to resolve rootDir: %w", err)
 	}
 	fileExtensions := normalizeFileExtensions(opts.FileExtensions)
+	dirPerm, filePerm := os.FileMode(0755), os.FileMode(0644)
+	if opts.PrivateOutput {
+		dirPerm, filePerm = PrivateDirPerm, PrivateFilePerm
+	}
 
 	var written []ProjectFile
 	for _, file := range content.Files {
@@ -521,7 +539,7 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		if !within {
 			return nil, fmt.Errorf("remote file %q would be written outside rootDir via an existing symlink", file.Name)
 		}
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), dirPerm); err != nil {
 			return nil, err
 		}
 		source := file.Source
@@ -529,7 +547,7 @@ func ApplyRemoteContent(opts Options, content *script.Content) ([]ProjectFile, e
 		// mid-write (API error, signal, crash) never leaves a local file
 		// half-written; the previous content or nothing is observed, never
 		// a corrupt partial file.
-		if err := fsutil.WriteFileAtomic(targetPath, []byte(source), 0644); err != nil {
+		if err := fsutil.WriteFileAtomic(targetPath, []byte(source), filePerm); err != nil {
 			return nil, err
 		}
 		relToRoot, err := filepath.Rel(opts.ProjectRoot, targetPath)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,11 @@ const (
 	glaspDirName    = ".glasp"
 	historyFileName = "history.jsonl"
 	lockFileName    = "history.lock"
+	// historyFilePerm keeps history.jsonl owner-only: entries record command
+	// arguments, and masking is keyword-based, so the file is treated as
+	// potentially sensitive (threat model M13 / T10). history.lock uses the
+	// same mode so every file glasp creates for history is owner-only.
+	historyFilePerm os.FileMode = 0600
 )
 
 var appendMu sync.Mutex
@@ -81,11 +87,22 @@ func Append(projectRoot string, entry Entry) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal history entry: %w", err)
 	}
-	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, historyFilePerm)
 	if err != nil {
 		return fmt.Errorf("failed to open history file: %w", err)
 	}
 	defer f.Close()
+	// O_CREATE's mode only applies to a new file. A history file written by
+	// an older glasp (0644) is tightened here so existing projects converge
+	// on owner-only permissions too. Windows has no POSIX group/other bits,
+	// so the check is skipped there.
+	if runtime.GOOS != "windows" {
+		if info, err := f.Stat(); err == nil && info.Mode().Perm()&0o077 != 0 {
+			if err := f.Chmod(historyFilePerm); err != nil {
+				return fmt.Errorf("failed to restrict history file permissions: %w", err)
+			}
+		}
+	}
 	if _, err := f.Write(append(data, '\n')); err != nil {
 		return fmt.Errorf("failed to append history entry: %w", err)
 	}

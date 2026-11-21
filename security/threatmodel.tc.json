@@ -8,7 +8,7 @@
     "description": "### コンポーネント\n- **glasp CLI**（開発者端末または CI 上で動作）\n  - `internal/auth`: OAuth 設定解決、ログインフロー、トークン保存／リフレッシュ\n  - `internal/scriptapi`: Apps Script API v1 の薄いラッパー（`google.golang.org/api/script/v1`）\n  - `internal/syncer`: ローカルファイル収集、リモートコンテンツのローカル反映\n  - `internal/history` / `internal/archive`: 実行履歴とペイロードのアーカイブ\n- **ローカル OAuth コールバックサーバー**: `localhost:0`（ランダムポート）で `/oauth2callback` を待ち受け、1 回の結果受信後に停止\n- **既定ブラウザ**: `open` / `xdg-open` / `rundll32` で認可 URL を開く\n- **Google OAuth 2.0 / Apps Script API / Drive API**（外部、TLS）\n\n### 認証情報の入手経路（優先順）\n1. `--auth <path>`（`.clasprc.json` 互換ファイル。リフレッシュ後のトークンを書き戻す）\n2. `GLASP_AUTH` 環境変数（JSON 文字列。リフレッシュ結果は永続化しない。主に CI 向け）\n3. プロジェクトキャッシュ `.glasp/access.json`（無ければ対話ログイン）\n\nOAuth クライアント ID / シークレットはビルド時に ldflags で埋め込まれ、`GLASP_CLIENT_ID` / `GLASP_CLIENT_SECRET` で上書き可能。スコープは `script.projects`、`script.deployments`、`drive.file`。\n\n### 信頼境界\n- TB1: 開発者端末（OS ユーザー） ↔ 同一端末上の他ユーザー／他プロセス\n- TB2: glasp プロセス ↔ ローカルコールバックサーバーへの HTTP 接続元（ブラウザ／任意のローカルプロセス）\n- TB3: 開発者端末／CI ↔ Google API（インターネット）\n- TB4: プロジェクトディレクトリ ↔ Git リポジトリ／GAS へのアップロード対象\n- TB5: GitHub Actions ジョブ内の glasp ステップ ↔ 同一ジョブの他ステップ／サードパーティ Action\n\n### CI（GitHub Actions）\n- `takihito/glasp` Action（`action.yml`）が `auth` input を `GITHUB_ENV` 経由で `GLASP_AUTH` としてエクスポートし、ジョブ内の後続ステップすべてで参照可能になる\n- glasp リポジトリ（public）の smoke ワークフローは main への push と workflow_dispatch でのみ起動し、`GLASP_AUTH` はリポジトリ単位の secret として保存されている\n"
   },
   "dataflow": {
-    "description": "### 対話ログイン\n1. glasp が `localhost:<random>` でリスナーを起動し、32 バイト乱数の state（任意で PKCE S256 challenge）付き認可 URL を生成\n2. 既定ブラウザで Google の同意画面を開く\n3. Google → ブラウザ → `http://localhost:<port>/oauth2callback?code=...&state=...`\n4. state を 1 回限りで検証し、認可コードを受信\n5. glasp → Google token endpoint: code（+ code_verifier）+ client secret でトークン交換\n6. アクセストークン／リフレッシュトークンを `.glasp/access.json`（0600、アトミック書き込み、ディレクトリは 0700）に保存\n\n### API 呼び出し\n- `oauth2.NewClient` が Bearer トークンを付与し、期限切れ時は自動リフレッシュ（`--auth` の場合はファイルへ書き戻し）\n- push: ローカルファイル収集 → (TS→GAS 変換) → `projects.updateContent`\n- pull/clone: `projects.getContent` → パス検証 → ローカルへ書き出し（0644）\n- run: `scripts.run` でリモート関数を実行（`--params` を送信）\n\n### 履歴とアーカイブ\n- 各コマンドの引数（機密キーワードを含むオプションは `REDACTED` に置換）、結果、アーカイブパスを `.glasp/history.jsonl` に追記（ファイルロック付き、0644）\n- push/pull のスナップショットを `.glasp/archive/<scriptId>/<push|pull>/<timestamp>/` に保存\n- `push --history-id <id>` は履歴の `archive.path` からペイロードを読み込み、command / direction / scriptId を検証して再送信\n"
+    "description": "### 対話ログイン\n1. glasp が `localhost:<random>` でリスナーを起動し、32 バイト乱数の state（任意で PKCE S256 challenge）付き認可 URL を生成\n2. 既定ブラウザで Google の同意画面を開く\n3. Google → ブラウザ → `http://localhost:<port>/oauth2callback?code=...&state=...`\n4. state を 1 回限りで検証し、認可コードを受信\n5. glasp → Google token endpoint: code（+ code_verifier）+ client secret でトークン交換\n6. アクセストークン／リフレッシュトークンを `.glasp/access.json`（0600、アトミック書き込み、ディレクトリは 0700）に保存\n\n### API 呼び出し\n- `oauth2.NewClient` が Bearer トークンを付与し、期限切れ時は自動リフレッシュ（`--auth` の場合はファイルへ書き戻し）\n- push: ローカルファイル収集 → (TS→GAS 変換) → `projects.updateContent`\n- pull/clone: `projects.getContent` → パス検証 → ローカルへ書き出し（0644）\n- run: `scripts.run` でリモート関数を実行（`--params` を送信）\n\n### 履歴とアーカイブ\n- 各コマンドの引数（機密キーワードを含むオプションは `REDACTED` に置換）、結果、アーカイブパスを `.glasp/history.jsonl` に追記（ファイルロック付き、0600）\n- push/pull のスナップショットを `.glasp/archive/<scriptId>/<push|pull>/<timestamp>/` に保存（ディレクトリ 0700、ファイル 0600）\n- `push --history-id <id>` は履歴の `archive.path` からペイロードを読み込み、command / direction / scriptId を検証して再送信\n"
   },
   "assumptions": [
     {
@@ -234,11 +234,11 @@
       "numericId": 13,
       "displayOrder": 13,
       "content": "Create .glasp/history.jsonl and archive files with owner-only permissions (0600 / 0700) for defense in depth.",
-      "status": "mitigationIdentified",
+      "status": "mitigationResolved",
       "metadata": [
         {
           "key": "Comments",
-          "value": "現状 history.jsonl は 0644、archive ディレクトリは 0755（親の .glasp/ は 0700）。"
+          "value": "history.jsonl / history.lock は 0600、.glasp/archive/ 配下はディレクトリ 0700・ファイル 0600 で作成（internal/history, internal/archive, syncer.Options.PrivateOutput）。旧バージョンが 0644 で作成した history.jsonl は次回追記時に 0600 へ修正する（Windows を除く）。既存アーカイブの権限は変更しないが、親の .glasp/ は 0700。PR #229。"
         }
       ]
     },
@@ -970,7 +970,7 @@
         },
         {
           "key": "Comments",
-          "value": "キーワードベースのマスク。新オプション追加時に漏れるリスクあり。ファイル権限は 0644。"
+          "value": "キーワードベースのマスク。新オプション追加時に漏れるリスクあり。ファイル権限は 0600（M13）。"
         }
       ],
       "tags": [
