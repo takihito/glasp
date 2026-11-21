@@ -238,7 +238,7 @@
       "metadata": [
         {
           "key": "Comments",
-          "value": "history.jsonl / history.lock は 0600、.glasp/archive/ 配下はディレクトリ 0700・ファイル 0600 で作成（internal/history, internal/archive, syncer.Options.PrivateOutput）。旧バージョンが 0644 で作成した history.jsonl は次回追記時に 0600 へ修正する（Windows を除く）。既存アーカイブの権限は変更しないが、親の .glasp/ は 0700。"
+          "value": "history.jsonl / history.lock は 0600、.glasp/archive/ 配下はディレクトリ 0700・ファイル 0600 で作成（internal/history, internal/archive, syncer.Options.PrivateOutput）。旧バージョンが 0644 で作成した history.jsonl は次回追記時に 0600 へ修正する（Windows を除く）。既存アーカイブの権限は変更しないが、親の .glasp/ は 0700。PR #229。"
         }
       ]
     },
