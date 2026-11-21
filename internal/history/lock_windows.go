@@ -10,7 +10,7 @@ import (
 )
 
 func acquireFileLock(lockPath string) (*os.File, error) {
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0600)
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, historyFilePerm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open lock file: %w", err)
 	}

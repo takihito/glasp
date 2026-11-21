@@ -20,7 +20,8 @@ const (
 	lockFileName    = "history.lock"
 	// historyFilePerm keeps history.jsonl owner-only: entries record command
 	// arguments, and masking is keyword-based, so the file is treated as
-	// potentially sensitive (threat model M13 / T10).
+	// potentially sensitive (threat model M13 / T10). history.lock uses the
+	// same mode so every file glasp creates for history is owner-only.
 	historyFilePerm os.FileMode = 0600
 )
 
