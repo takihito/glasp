@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.4](https://github.com/takihito/glasp/compare/v0.5.3...v0.5.4) - 2026-11-24
+
+- feat(config): create .glasp/.gitignore to keep tokens out of Git by @takihito in https://github.com/takihito/glasp/pull/223
+- fix(action): mask tokens inside GLASP_AUTH and document CI security by @takihito in https://github.com/takihito/glasp/pull/224
+- fix(action): mask both decoded and escaped credential values by @takihito in https://github.com/takihito/glasp/pull/226
+- ci(smoke): run smoke jobs in the main-only smoke environment by @takihito in https://github.com/takihito/glasp/pull/227
+- docs(security): add Threat Composer threat model and HTML viewer by @takihito in https://github.com/takihito/glasp/pull/228
+- fix(security): create history and archive files with owner-only permissions (M13) by @takihito in https://github.com/takihito/glasp/pull/229
+- build(deps): bump google.golang.org/api from 0.315.0 to 0.316.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/230
+- build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/231
+- build(deps): bump actions/dependency-review-action from 5.0.0 to 5.0.1 by @dependabot[bot] in https://github.com/takihito/glasp/pull/232
+- build(deps): bump ossf/scorecard-action from 2.5.0 to 2.6.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/233
+- build(deps): bump step-security/harden-runner from 2.22.4 to 2.23.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/234
+- build(deps): bump actions/setup-go from 7.0.0 to 7.1.0 by @dependabot[bot] in https://github.com/takihito/glasp/pull/235
+
 ## [v0.5.3](https://github.com/takihito/glasp/compare/v0.5.2...v0.5.3) - 2026-11-17
 
 - build(deps): bump the codeql-action group with 4 updates by @dependabot[bot] in https://github.com/takihito/glasp/pull/195
